@@ -4,10 +4,10 @@ import {
   Calendar, Clock, Moon, Sparkles, History,
   Calculator, Share2, Copy, Check, Star,
   Heart, Timer, Gift, ArrowLeft,
-  Globe, Hourglass, Sun, Sunrise,
+  Globe, Hourglass, Sun,
   Crown, Baby, GraduationCap, Briefcase,
   Atom, ChevronDown, Zap, Users, Award,
-  Infinity, Link2, Gem, Diamond, AlertCircle
+  Infinity as InfinityIcon, Link2, Gem, Diamond, AlertCircle
 } from 'lucide-react'
 
 // ---------- Types ----------
@@ -40,6 +40,7 @@ type Result = {
   dayIndex: number
   zodiac: { name: string; icon: string; desc: string }
   generation: string
+  generationDescription: string
   season: { name: string; icon: string }
   totalDays: number
   totalWeeks: number
@@ -51,8 +52,8 @@ type Result = {
   birthDate: Date
   birthStrAr: string
   birthGregStr: string
-  milestones: { label: string; dateStr: string; daysUntil: number; isPast: boolean }[]
-  planetAges: { name: string; age: string; icon: string }[]
+  milestones: { label: string; title: string; dateStr: string; daysUntil: number; isPast: boolean }[]
+  planetAges: { name: string; age: string; icon: string; image: string }[]
   yearContext: string
   golden: {
     lastExact: GoldenAlign | null
@@ -131,8 +132,29 @@ function formatGregAr(date: Date, opts: Intl.DateTimeFormatOptions){
     return date.toLocaleDateString('ar-EG', opts)
   }
 }
-function formatNumber(n:number){ return new Intl.NumberFormat('en-US').format(n) }
+function formatNumber(n:number){ return new Intl.NumberFormat('en-US', {useGrouping:true, maximumFractionDigits:0}).format(n) }
 function formatNumberAr(n:number){ return new Intl.NumberFormat('ar-EG-u-nu-latn').format(n) }
+
+function getGenerationDescription(year:number){
+  if(year<=1945) return "جيل عاش التحولات الكبرى وبنى أساس العالم الحديث بالصبر والخبرة."
+  if(year<=1964) return "جيل الطفرة الذي أسس المؤسسات وغيّر شكل العمل والمجتمع بعد الحرب."
+  if(year<=1980) return "جيل X الذي عرف العالم قبل الإنترنت، ثم قاد الانتقال إلى العصر الرقمي."
+  if(year<=1996) return "جيل الألفية الذي نشر الإنترنت وثقافة المشاريع والعمل المرن حول العالم."
+  if(year<=2012) return "الجيل Z الذي نشأ مع الهاتف الذكي، ويقود لغة المحتوى والتغيير السريع."
+  return "جيل ألفا الذي يتعلم ويبتكر في زمن الذكاء الاصطناعي والواقع الممتد."
+}
+
+const planetImages = {
+  "عطارد": "/planets/mercury.jpg",
+  "الزهرة": "/planets/venus.jpg",
+  "الأرض": "/planets/earth.jpg",
+  "المريخ": "/planets/mars.jpg",
+  "المشتري": "/planets/jupiter.jpg",
+  "زحل": "/planets/saturn.jpg",
+  "أورانوس": "/planets/uranus.jpg",
+  "نبتون": "/planets/neptune.jpg",
+  "القمر": "/planets/moon.jpg",
+} as const
 
 function getDaysInPrevHijriMonth(todayGreg: Date, todayHijri: HijriParts): number {
   const startCurrent = new Date(todayGreg)
@@ -320,6 +342,22 @@ function Countdown({target}:{target:Date}){
   )
 }
 
+function LiquidSurface({children, className=""}:{children:React.ReactNode; className?:string}){
+  const [ripple, setRipple] = useState<{x:number;y:number;id:number}|null>(null)
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setRipple({x: event.clientX - rect.left, y: event.clientY - rect.top, id: Date.now()})
+  }
+  return (
+    <div className={`liquid-surface ${className}`} onPointerDown={handlePointerDown}>
+      <div className="liquid-surface__flow" aria-hidden="true"/>
+      <div className="liquid-surface__sheen" aria-hidden="true"/>
+      {ripple && <span key={ripple.id} className="liquid-surface__ripple" style={{left:ripple.x, top:ripple.y}} aria-hidden="true"/>}
+      <div className="liquid-surface__content">{children}</div>
+    </div>
+  )
+}
+
 // ---------- Main ----------
 export default function App(){
   const [birthStr, setBirthStr] = useState("1998-06-15")
@@ -327,6 +365,15 @@ export default function App(){
   const [result, setResult] = useState<Result|null>(null)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
+  const [shareStatus, setShareStatus] = useState("")
+  const [userRating, setUserRating] = useState<number>(() => {
+    try {
+      const saved = Number(localStorage.getItem('omri-rating'))
+      return saved >= 1 && saved <= 5 ? saved : 0
+    } catch {
+      return 0
+    }
+  })
   const resultsRef = useRef<HTMLDivElement>(null)
   const calcIdRef = useRef(0)
 
@@ -341,7 +388,6 @@ export default function App(){
     const today = new Date(); today.setHours(12,0,0,0)
     const birthNoon = new Date(y, m-1, d, 12,0,0)
     const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12,0,0)
-    const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0,0,0)
     if(isNaN(birth.getTime())){ setError("تاريخ غير صحيح"); return }
     if(birthNoon.getTime() > today.getTime()){ setError("تاريخ الميلاد لا يمكن أن يكون في المستقبل"); return }
     if(y<1900){ setError("السنة يجب أن تكون بعد 1900"); return }
@@ -389,12 +435,21 @@ export default function App(){
     if(!nextHijriDate){ nextHijriDate=nextGregDate; nextHijriStr=getHijriParts(nextHijriDate).formatted }
     const daysToNextH = Math.ceil((nextHijriDate.getTime()-todayMid0.getTime())/86400000)
 
-    const milestones = [10000,20000,30000].map(days=>{
+    const milestones = [
+      {days:5000, title:"طفولتك"},
+      {days:10000, title:"دراستك"},
+      {days:15000, title:"بداية مسيرتك"},
+      {days:20000, title:"استقلالك"},
+      {days:25000, title:"خبرتك وإنجازاتك"},
+      {days:30000, title:"نضجك وتأثيرك"},
+      {days:40000, title:"إرثك في الحياة"},
+    ].map(({days, title})=>{
       const msDate = new Date(birthNoon); msDate.setDate(birthNoon.getDate()+days)
       const isPast = msDate < todayMid0
       const daysUntil = Math.ceil((msDate.getTime()-todayMid0.getTime())/86400000)
       return {
         label: `${formatNumberAr(days)} يوم`,
+        title,
         dateStr: formatGregAr(msDate, {day:'numeric', month:'long', year:'numeric'}),
         daysUntil, isPast
       }
@@ -402,10 +457,15 @@ export default function App(){
 
     const gregYearsExact = totalDays/365.2425
     const planetAges = [
-      { name:"عطارد", icon:"☿", age: (gregYearsExact/0.240846).toFixed(2) },
-      { name:"الزهرة", icon:"♀", age: (gregYearsExact/0.615198).toFixed(2) },
-      { name:"المريخ", icon:"♂", age: (gregYearsExact/1.88082).toFixed(2) },
-      { name:"المشتري", icon:"♃", age: (gregYearsExact/11.862).toFixed(2) },
+      { name:"عطارد", icon:"☿", age: (gregYearsExact/0.240846).toFixed(2), image: planetImages["عطارد"] },
+      { name:"الزهرة", icon:"♀", age: (gregYearsExact/0.615198).toFixed(2), image: planetImages["الزهرة"] },
+      { name:"الأرض", icon:"⊕", age: gregYearsExact.toFixed(2), image: planetImages["الأرض"] },
+      { name:"المريخ", icon:"♂", age: (gregYearsExact/1.88082).toFixed(2), image: planetImages["المريخ"] },
+      { name:"المشتري", icon:"♃", age: (gregYearsExact/11.862).toFixed(2), image: planetImages["المشتري"] },
+      { name:"زحل", icon:"♄", age: (gregYearsExact/29.457).toFixed(2), image: planetImages["زحل"] },
+      { name:"أورانوس", icon:"♅", age: (gregYearsExact/84.016).toFixed(2), image: planetImages["أورانوس"] },
+      { name:"نبتون", icon:"♆", age: (gregYearsExact/164.8).toFixed(2), image: planetImages["نبتون"] },
+      { name:"القمر", icon:"☾", age: (totalDays/27.3217).toFixed(2), image: planetImages["القمر"] },
     ]
 
     const todayHijriCheck = getHijriParts(todayMid0)
@@ -415,7 +475,7 @@ export default function App(){
     const baseResult: Result = {
       greg, hijriAge, hijriBirth, hijriToday,
       dayNameAr: daysArFull[idx], dayNameEn: daysEnFull[idx], dayIndex: idx,
-      zodiac, generation, season,
+      zodiac, generation, generationDescription: getGenerationDescription(y), season,
       totalDays, totalWeeks, totalHours, totalMinutes, totalSeconds,
       nextGreg:{date: nextGregForCountdown, days:daysToNextG, dateStr:nextGregStr, weekday:nextGregWeekday},
       nextHijri:{date:nextHijriDate, hijriStr:nextHijriStr, days:daysToNextH},
@@ -526,7 +586,7 @@ export default function App(){
 
     // schedule async
     if('requestIdleCallback' in window){
-      (window as any).requestIdleCallback(runGolden, {timeout: 800})
+      window.requestIdleCallback(runGolden, {timeout: 800})
     } else {
       setTimeout(runGolden, 50)
     }
@@ -542,10 +602,33 @@ export default function App(){
     try{ await navigator.clipboard.writeText(t) }catch{ /* fallback */ }
     setCopied(true); setTimeout(()=>setCopied(false),2000)
   }
+  const rateApp = (rating:number) => {
+    setUserRating(rating)
+    try { localStorage.setItem('omri-rating', String(rating)) } catch { /* storage may be disabled */ }
+  }
   const share = async() => {
-    if(result && (navigator as any).share){
-      try{ await (navigator as any).share({title:"عُمري", text:`عمري ${result.greg.years} سنة و ${result.greg.months} شهر و ${result.greg.days} يوم`}) }catch{ copyResult() }
-    } else copyResult()
+    if(!result) return
+    const shareText = `عمري ${result.greg.years} سنة و ${result.greg.months} شهر و ${result.greg.days} يوم — مولود يوم ${result.dayNameAr} ${result.birthStrAr}`
+    const shareData: ShareData = {
+      title: "عُمري — حاسبة العمر",
+      text: shareText,
+      url: window.location.href,
+    }
+    if(navigator.share){
+      try {
+        await navigator.share(shareData)
+        setShareStatus("تم فتح المشاركة")
+        setTimeout(()=>setShareStatus(""), 2500)
+      } catch(error) {
+        if(error instanceof DOMException && error.name === "AbortError") return
+        setShareStatus("تعذرت المشاركة")
+        setTimeout(()=>setShareStatus(""), 2500)
+      }
+      return
+    }
+    await copyResult()
+    setShareStatus("لا يدعم المتصفح المشاركة المباشرة، تم نسخ النتيجة")
+    setTimeout(()=>setShareStatus(""), 2500)
   }
 
   const quickDates = [
@@ -556,17 +639,13 @@ export default function App(){
   ]
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FCFCF9] text-[#0A0A0B] selection:bg-[#0A0A0B] selection:text-white overflow-x-hidden antialiased" style={{fontFamily:"'Tajawal','Cairo',system-ui,sans-serif", textRendering:'optimizeLegibility'}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Amiri:wght@400;700&family=Cairo:wght@600;800&display=swap'); *{ -webkit-font-smoothing: antialiased; } input[type="date"], input[type="time"]{ -webkit-appearance: none; }`}</style>
+    <div dir="rtl" className="liquid-page min-h-screen bg-[#F7F4EE] text-[#0A0A0B] selection:bg-[#68733A] selection:text-white overflow-x-hidden antialiased" style={{fontFamily:"Tajawal, 'Noto Sans Arabic', 'Segoe UI', sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@400;500;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap'); *{ -webkit-font-smoothing: antialiased; } input[type="date"], input[type="time"]{ -webkit-appearance: none; }`}</style>
 
       {/* Background — lighter, no heavy blur for mobile performance */}
-      <div className="fixed inset-0 -z-10 bg-[#FCFCF9]">
-        <div className="absolute inset-0 opacity-[0.025]" style={{backgroundImage:`url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><g fill="none" stroke="%230A0A0B" stroke-width="0.5"><path d="M40 0 L80 40 L40 80 L0 40 Z"/><circle cx="40" cy="40" r="11"/><path d="M0 0 L80 80 M80 0 L0 80" opacity="0.3"/></g></svg>')`, backgroundSize:'80px 80px'}}/>
-        <div className="absolute top-0 right-0 w-[560px] h-[360px] bg-[#7C3AED]/[0.04] blur-[60px] rounded-full hidden md:block"/>
-        <div className="absolute top-[20%] left-0 w-[480px] h-[480px] bg-[#C9A86A]/[0.05] blur-[60px] rounded-full hidden md:block"/>
-      </div>
+      <div className="fixed inset-0 -z-10 bg-[#F7F4EE]"><div className="absolute inset-0 pencil-paper"/></div>
 
-      {/* Header — Design Arena inspired: ink + violet */}
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-[#FCFCF9]/85 backdrop-blur-xl border-b border-[#E8E6E1] supports-[backdrop-filter]:bg-[#FCFCF9]/75">
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-[64px] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -578,7 +657,6 @@ export default function App(){
               <div className="font-black text-[17px] leading-none tracking-tight text-[#0A0A0B]">عُـمـري</div>
               <div className="text-[10px] tracking-[0.16em] font-bold text-[#71717A] truncate">HIJRI & GREGORIAN</div>
             </div>
-            <span className="hidden lg:inline-flex bg-[#7C3AED] text-white text-[11px] font-black px-3 py-1 rounded-full shrink-0">Design Arena</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 bg-white border border-[#E8E6E1] rounded-full p-1 shadow-sm shrink-0">
@@ -589,9 +667,10 @@ export default function App(){
 
           <div className="flex items-center gap-2 shrink-0">
             <LiveDateHeader/>
-            <button onClick={share} className="hidden sm:inline-flex items-center gap-1.5 bg-[#0A0A0B] hover:bg-black text-white rounded-full px-4 py-2 text-xs font-bold transition active:scale-[0.98]">
+            <button onClick={share} type="button" aria-label="مشاركة نتيجة العمر" className="hidden sm:inline-flex items-center gap-1.5 bg-[#0A0A0B] hover:bg-black text-white rounded-full px-4 py-2 text-xs font-bold transition active:scale-[0.98]">
               <Share2 className="w-3.5 h-3.5"/> مشاركة
             </button>
+            {shareStatus && <span role="status" className="fixed top-[72px] left-1/2 -translate-x-1/2 z-50 rounded-full bg-[#4b365f] px-4 py-2 text-xs font-bold text-white shadow-lg whitespace-nowrap">{shareStatus}</span>}
           </div>
         </div>
       </header>
@@ -608,7 +687,7 @@ export default function App(){
 
             <h1 className="text-[30px] md:text-[44px] font-black leading-[0.95] tracking-tight text-[#0A0A0B] mt-4">
               اعرف عمرك
-              <span className="block bg-gradient-to-l from-[#7C3AED] to-[#C9A86A] bg-clip-text text-transparent pb-1" style={{fontFamily:"'Amiri',serif"}}>بالسنة والشهر واليوم</span>
+              <span className="block text-[#B08D3C] pb-1" style={{fontFamily:"'Amiri',serif"}}>بالسنة والشهر واليوم</span>
               <span className="block text-[20px] md:text-[24px] font-bold text-[#18181B] mt-1">بالميلادي <span className="text-[#71717A] font-normal">و</span> الهجري — بدقة</span>
             </h1>
             <p className="text-[#52525B] text-[14px] md:text-[15px] leading-relaxed mt-3 max-w-[520px]">
@@ -621,8 +700,15 @@ export default function App(){
                 <div className="w-8 h-8 rounded-full bg-[#0A0A0B] border-2 border-[#FCFCF9] flex items-center justify-center text-[10px] font-black text-white">+12k</div>
               </div>
               <div className="text-xs">
-                <div className="flex items-center gap-1 text-[#F59E0B]">{[1,2,3,4,5].map(s=> <Star key={s} className="w-3.5 h-3.5 fill-[#F59E0B]"/> )}<span className="text-[#0A0A0B] font-black mr-1">4.9</span> <span className="text-[#71717A]">(2,847 تقييم)</span></div>
-                <div className="text-[#71717A] text-[11px]">سريعة على كل الهواتف</div>
+                <div className="flex items-center gap-1 text-[#F59E0B]" role="group" aria-label="قيّم الموقع من نجمة إلى خمس نجوم">
+                  {[1,2,3,4,5].map(s=> (
+                    <button key={s} type="button" onClick={()=>rateApp(s)} aria-label={`قيّم الموقع ${s} من 5`} className="p-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#68733A]">
+                      <Star className={`w-4 h-4 transition ${s <= (userRating || 5) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-[#D6D3D1]"}`}/>
+                    </button>
+                  ))}
+                  <span className="text-[#0A0A0B] font-black mr-1">4.9</span> <span className="text-[#71717A]">(2,847 تقييم)</span>
+                </div>
+                <div className="text-[#71717A] text-[11px]">{userRating ? `تقييمك: ${userRating} من 5 — شكرًا لرأيك` : "اضغط على النجوم لتقييم الموقع"}</div>
               </div>
             </div>
 
@@ -647,7 +733,7 @@ export default function App(){
           <div id="calc" className="relative min-w-0">
             <div className="absolute -inset-1 bg-gradient-to-br from-[#7C3AED]/10 via-transparent to-[#C9A86A]/10 rounded-[28px] blur-xl hidden md:block"/>
             <div className="relative bg-white border border-[#E8E6E1] rounded-[24px] md:rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="bg-[#0A0A0B] px-5 md:px-6 py-4 flex items-center justify-between text-white gap-3">
+              <LiquidSurface className="bg-[#0A0A0B] px-5 md:px-6 py-4 flex items-center justify-between text-white gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center border border-white/10 shrink-0"><Calculator className="w-5 h-5"/></div>
                   <div className="min-w-0">
@@ -658,7 +744,7 @@ export default function App(){
                 <div className="hidden sm:flex items-center gap-1.5 bg-white text-[#0A0A0B] rounded-full px-3 py-1.5 text-xs font-bold shrink-0" dir="ltr">
                   <Clock className="w-3.5 h-3.5 text-[#7C3AED]"/><LiveTime/>
                 </div>
-              </div>
+              </LiquidSurface>
 
               <div className="p-5 md:p-6 space-y-4">
                 <div className="grid sm:grid-cols-[1.45fr_0.75fr] gap-3">
@@ -735,7 +821,7 @@ export default function App(){
                   <div className="font-black text-white text-[14px] md:text-[16px] leading-tight">اليوم عيد ميلادك الميلادي والهجري معاً!</div>
                   <div className="text-xs font-bold text-white/60 leading-relaxed break-words"><span className="text-[#C9A86A]">{result.hijriBirth.formatted}</span> ↔ {result.birthStrAr}</div>
                 </div>
-                <div className="hidden md:flex items-center gap-2 mr-auto bg-white text-[#0A0A0B] rounded-full px-4 py-2 text-xs font-black shrink-0"><Infinity className="w-4 h-4"/> نادر جداً</div>
+                <div className="hidden md:flex items-center gap-2 mr-auto bg-white text-[#0A0A0B] rounded-full px-4 py-2 text-xs font-black shrink-0"><InfinityIcon className="w-4 h-4"/> نادر جداً</div>
               </div>
             </div>
           )}
@@ -788,7 +874,7 @@ export default function App(){
             </div>
 
             {/* Hijri */}
-            <div className="bg-[#0A0A0B] rounded-[24px] p-5 md:p-6 shadow-lg relative overflow-hidden text-white border border-white/10 min-w-0">
+            <LiquidSurface className="bg-[#0A0A0B] rounded-[24px] p-5 md:p-6 shadow-lg relative overflow-hidden text-white border border-white/10 min-w-0">
               <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#7C3AED]/20 blur-3xl rounded-full pointer-events-none"/>
               <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{backgroundImage:`url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><path d="M30 0 L60 30 L30 60 L0 30 Z" fill="none" stroke="white" stroke-width="0.5"/></svg>')`}}/>
               <div className="relative min-w-0">
@@ -827,7 +913,7 @@ export default function App(){
                   <div className="bg-white text-[#0A0A0B] rounded-xl p-2.5 text-center min-w-0"><div className="text-[11px] font-black truncate">ميلادك هجري</div><div className="text-xs font-black truncate" style={{fontFamily:"'Amiri',serif"}}>{result.hijriBirth.formatted}</div></div>
                 </div>
               </div>
-            </div>
+            </LiquidSurface>
           </div>
 
           {/* Golden Alignment — optimized */}
@@ -841,7 +927,7 @@ export default function App(){
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex gap-3 md:gap-4 min-w-0">
                     <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#A78BFA] flex items-center justify-center shadow-lg shrink-0">
-                      <Infinity className="w-6 h-6 text-white"/>
+                      <InfinityIcon className="w-6 h-6 text-white"/>
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1012,7 +1098,7 @@ export default function App(){
                 <div className="text-xs font-bold tracking-widest text-[#71717A] break-words" dir="ltr">{result.dayNameEn}</div>
                 <div className="mt-3 inline-flex items-center gap-2 bg-[#FAFAF9] border border-[#E8E6E1] rounded-full px-3 py-1.5 text-xs font-bold max-w-full"><span className="w-7 h-7 rounded-full bg-[#0A0A0B] text-white flex items-center justify-center text-sm shrink-0">🌙</span> <span className="truncate">وُلدت يوم {result.dayNameAr}</span></div>
                 <div className="mt-4 bg-[#FAFAF9] border border-[#E8E6E1] rounded-2xl p-3">
-                  <div className="text-[11px] font-black text-[#7C3AED] mb-1 flex items-center gap-1"><History className="w-3 h-3"/> لمحة تاريخية</div>
+                  <div className="text-[11px] font-black text-[#B08D3C] mb-1 flex items-center gap-1"><History className="w-3 h-3"/> حدث تاريخي</div>
                   <p className="text-[13px] leading-relaxed font-bold text-[#0A0A0B] break-words">{historicalPool[result.dayIndex]}</p>
                   <p className="text-[11px] text-[#71717A] mt-2 leading-relaxed break-words">{result.yearContext}</p>
                 </div>
@@ -1032,6 +1118,10 @@ export default function App(){
                   <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0"><div className="text-lg">👥</div><div className="text-xs font-black text-[#0A0A0B] truncate">{result.generation}</div><div className="text-[11px] text-[#71717A] truncate">جيلك</div></div>
                 </div>
                 <div className="mt-3 text-[11px] font-bold text-[#71717A] bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl px-3 py-2 break-words">📅 {result.birthStrAr} — {result.hijriBirth.formatted}</div>
+                <div className="mt-3 bg-[#FFFCF4] border border-[#E8E0C8] rounded-xl px-3 py-2.5 break-words">
+                  <div className="text-[11px] font-black text-[#B08D3C] mb-1">ماذا صنع جيلك؟</div>
+                  <div className="text-xs font-bold text-[#52525B] leading-relaxed">{result.generationDescription}</div>
+                </div>
               </div>
             </div>
 
@@ -1071,7 +1161,7 @@ export default function App(){
             <div className="lg:col-span-8 bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-[#7C3AED] flex items-center justify-center shrink-0"><Heart className="w-4 h-4 text-white"/></div>
-                <div className="font-black text-[#0A0A0B]">حياتك بالأرقام</div>
+                <div className="font-black text-[#B08D3C]">حياتك بالأرقام</div>
                 <span className="mr-auto bg-[#FAFAF9] border border-[#E8E6E1] text-[#71717A] text-[11px] font-bold px-2.5 py-1 rounded-full hidden sm:inline-flex">تقديرية • للمتعة</span>
               </div>
               <div className="grid sm:grid-cols-3 gap-3">
@@ -1104,12 +1194,12 @@ export default function App(){
             <div className="lg:col-span-4 bg-[#0A0A0B] rounded-[20px] p-5 text-white relative overflow-hidden border border-white/10 min-w-0">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#7C3AED]/20 blur-2xl rounded-full pointer-events-none"/>
               <div className="relative">
-                <div className="flex items-center gap-2 mb-3"><Atom className="w-4 h-4 text-[#A78BFA]"/><span className="font-black text-sm">عمرك على الكواكب</span><span className="mr-auto text-[10px] bg-white/10 border border-white/10 px-2 py-1 rounded-full text-white/60 hidden sm:inline">للمتعة</span></div>
-                <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-3"><Atom className="w-4 h-4 text-[#D4B56A]"/><span className="font-black text-sm">عمرك على الكواكب والقمر</span><span className="mr-auto text-[10px] bg-white/10 border border-white/10 px-2 py-1 rounded-full text-white/60 hidden sm:inline">للمتعة</span></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {result.planetAges.map(p=> (
-                    <div key={p.name} className="flex items-center justify-between bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2.5 backdrop-blur">
-                      <span className="flex items-center gap-2 text-sm font-bold"><span className="w-7 h-7 rounded-full bg-white text-[#0A0A0B] flex items-center justify-center text-xs font-black shrink-0">{p.icon}</span>{p.name}</span>
-                      <span className="text-sm font-black text-[#A78BFA] tabular-nums" dir="ltr">{p.age} سنة</span>
+                    <div key={p.name} className="bg-white/[0.06] border border-white/10 rounded-xl px-2 py-2 backdrop-blur min-w-0">
+                      <span className="flex items-center gap-1.5 text-xs font-bold min-w-0"><span className="relative w-8 h-8 rounded-full bg-white overflow-hidden flex items-center justify-center shrink-0"><span className="text-[#0A0A0B] text-xs font-black">{p.icon}</span><img src={p.image} alt={p.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" onError={e=> { e.currentTarget.style.display='none' }}/></span><span className="truncate">{p.name}</span></span>
+                      <span className="block text-xs font-black text-[#D4B56A] tabular-nums mt-1" dir="ltr">{p.age} سنة</span>
                     </div>
                   ))}
                 </div>
@@ -1122,17 +1212,18 @@ export default function App(){
           <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-xl bg-[#0A0A0B] flex items-center justify-center shrink-0"><Hourglass className="w-4 h-4 text-white"/></div>
-              <div className="font-black text-[#0A0A0B]">محطات قادمة</div>
+              <div className="font-black text-[#B08D3C]">محطات حياتك</div>
               <span className="mr-auto text-[11px] font-bold text-[#71717A] bg-[#FAFAF9] border border-[#E8E6E1] px-2.5 py-1 rounded-full">بالأيام</span>
             </div>
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {result.milestones.map(m=> (
                 <div key={m.label} className={`rounded-2xl p-4 border min-w-0 ${m.isPast? "bg-[#F4F4F5] border-[#E4E4E7] opacity-80" : "bg-[#FAFAF9] border-[#E8E6E1]"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className={`text-xs font-black px-2.5 py-1 rounded-full shrink-0 ${m.isPast? "bg-[#0A0A0B] text-white":"bg-[#7C3AED] text-white"}`}>{m.isPast?"تم ✓": (m.daysUntil===0?"اليوم":"قادم")}</span>
                     <span className="text-[11px] font-bold text-[#71717A] tabular-nums shrink-0" dir="ltr">{m.isPast?`منذ ${formatNumber(Math.abs(m.daysUntil))}`:`بعد ${formatNumber(m.daysUntil)}`}</span>
                   </div>
-                  <div className="font-black text-[#0A0A0B] mt-2 break-words tabular-nums" dir="ltr">{m.label}</div>
+                  <div className="font-black text-[#0A0A0B] mt-2 break-words">{m.title}</div>
+                  <div className="text-sm font-black text-[#B08D3C] mt-1 break-words tabular-nums" dir="ltr">{m.label}</div>
                   <div className="text-xs font-bold text-[#52525B] break-words">{m.dateStr}</div>
                 </div>
               ))}
@@ -1161,13 +1252,13 @@ export default function App(){
       <section id="features" className="max-w-[1200px] mx-auto px-4 md:px-6 mt-10">
         <div className="text-center max-w-[660px] mx-auto">
           <div className="inline-flex items-center gap-2 bg-white border border-[#E8E6E1] rounded-full px-3 py-1 text-[11px] font-black tracking-widest text-[#71717A] shadow-sm">لماذا يختارنا الجميع؟</div>
-          <h2 className="text-[24px] md:text-[30px] font-black leading-tight mt-3 text-[#0A0A0B]">كل ما تحتاجه لمعرفة عمرك <span className="text-[#7C3AED]" style={{fontFamily:"'Amiri',serif"}}>بدقة وأناقة</span></h2>
+          <h2 className="text-[24px] md:text-[30px] font-black leading-tight mt-3 text-[#B08D3C]">كل ما تحتاجه لمعرفة عمرك <span style={{fontFamily:"'Amiri',serif"}}>بدقة وأناقة</span></h2>
           <p className="text-sm text-[#52525B] leading-relaxed mt-2">حاسبة خفيفة وسريعة تجمع الميلادي والهجري والعد التنازلي — مصممة لتكون سلسة حتى على أضعف الهواتف.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-4 mt-6">
           {[
             {title:"عمر تفصيلي بالتقويمين", desc:"نحسب سنواتك وشهورك وأيامك بدقة تامة بالميلادي والهجري (أم القرى).", icon: Calculator, color:"bg-[#0A0A0B]"},
-            {title:"التطابق الذهبي", desc:"اكتشف متى يلتقي عيد ميلادك الميلادي والهجري — مع آخر مرة والقادمة المتوقعة.", icon: Infinity, color:"bg-[#7C3AED]"},
+            {title:"التطابق الذهبي", desc:"اكتشف متى يلتقي عيد ميلادك الميلادي والهجري — مع آخر مرة والقادمة المتوقعة.", icon: InfinityIcon, color:"bg-[#7C3AED]"},
             {title:"عدّ تنازلي حي", desc:"تابع بالثواني كم بقي لعيد ميلادك القادم — ميلادياً وهجرياً.", icon: Timer, color:"bg-[#18181B]"},
           ].map(f=> (
             <div key={f.title} className="bg-white border border-[#E8E6E1] rounded-[20px] p-6 shadow-sm hover:shadow-md transition min-w-0">
@@ -1196,7 +1287,7 @@ export default function App(){
       {/* FAQ */}
       <section id="faq" className="max-w-[1200px] mx-auto px-4 md:px-6 mt-6">
         <div className="bg-white border border-[#E8E6E1] rounded-[24px] p-5 md:p-8 shadow-sm">
-          <h3 className="text-lg md:text-xl font-black text-[#0A0A0B] flex items-center gap-2"><Clock className="w-5 h-5 text-[#7C3AED]"/> أسئلة شائعة</h3>
+          <h3 className="text-lg md:text-xl font-black text-[#B08D3C] flex items-center gap-2"><Clock className="w-5 h-5 text-[#B08D3C]"/> أسئلة شائعة</h3>
           <div className="grid md:grid-cols-2 gap-3 mt-5">
             {[
               {q:"هل الحساب دقيق؟", a:"نعم، نحسب الفرق الحقيقي يوماً بيوم مع مراعاة الكبيسة وتقويم أم القرى."},
@@ -1221,7 +1312,7 @@ export default function App(){
               <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shrink-0"><span className="font-black text-[#0A0A0B]">ع</span></div>
               <div className="min-w-0">
                 <div className="font-black text-sm">عُـمـري — حاسبة العمر المتكاملة</div>
-                <div className="text-xs text-white/50 truncate">دقيق • سريع • خفيف • Design Arena style</div>
+                <div className="text-xs text-white/50 truncate">دقيق • سريع • خفيف</div>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
@@ -1229,10 +1320,6 @@ export default function App(){
               <span className="hidden sm:inline text-white/20">•</span>
               <span className="bg-white text-[#0A0A0B] font-black rounded-full px-3 py-1.5 whitespace-nowrap">المنشئ: عبدالرحمن محمود أحمد محمد</span>
             </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/30 text-center">
-            <span className="break-words">مصمم بألوان Design Arena — سريع على الموبايل، بدون لاج، وأرقام ثابتة.</span>
-            <span className="flex items-center gap-1.5 shrink-0">صُنع بـ <Heart className="w-3 h-3 fill-white text-white"/> للجميع</span>
           </div>
         </div>
       </footer>

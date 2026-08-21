@@ -1,1 +1,111 @@
 @import "tailwindcss";
+
+:root {
+	color-scheme: light;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+}
+
+html {
+	background: #f7f4ee;
+	scroll-behavior: smooth;
+}
+
+body {
+	min-width: 320px;
+	margin: 0;
+	background: #f7f4ee;
+	font-family: 'Tajawal', 'Noto Sans Arabic', 'Segoe UI', sans-serif;
+}
+
+.liquid-page {
+	overflow-x: clip;
+	background-image:
+		linear-gradient(168deg, transparent 0 12%, rgba(105, 78, 131, 0.13) 13% 24%, rgba(177, 137, 105, 0.12) 25% 31%, transparent 32%),
+		linear-gradient(12deg, transparent 0 71%, rgba(104, 115, 58, 0.08) 72% 80%, rgba(124, 91, 150, 0.12) 81% 90%, transparent 91%),
+		repeating-linear-gradient(96deg, transparent 0 22px, rgba(105, 78, 131, 0.045) 23px 24px, transparent 25px 47px),
+		repeating-linear-gradient(6deg, transparent 0 31px, rgba(177, 137, 105, 0.04) 32px 33px, transparent 34px 61px),
+		repeating-linear-gradient(112deg, rgba(88, 81, 68, 0.035) 0 1px, transparent 1px 13px),
+		repeating-linear-gradient(18deg, rgba(88, 81, 68, 0.02) 0 1px, transparent 1px 19px);
+	background-attachment: fixed;
+}
+
+button,
+input {
+	font: inherit;
+}
+
+/* A quiet pencil texture that remains crisp on high-density screens. */
+.pencil-paper {
+	position: relative;
+	overflow: clip;
+	contain: paint;
+	background-color: #f7f4ee;
+	background-image:
+		linear-gradient(168deg, transparent 0 18%, rgba(105, 78, 131, 0.2) 19% 33%, rgba(177, 137, 105, 0.18) 34% 42%, transparent 43%),
+		linear-gradient(12deg, transparent 0 67%, rgba(104, 115, 58, 0.13) 68% 76%, rgba(124, 91, 150, 0.18) 77% 86%, transparent 87%),
+		repeating-linear-gradient(112deg, rgba(69, 62, 52, 0.1) 0 1px, transparent 1px 13px),
+		repeating-linear-gradient(18deg, rgba(69, 62, 52, 0.065) 0 1px, transparent 1px 19px),
+		repeating-linear-gradient(92deg, transparent 0 31px, rgba(105, 78, 131, 0.055) 32px 33px, transparent 34px 61px),
+		radial-gradient(circle at 18% 24%, rgba(69, 62, 52, 0.11) 0 1px, transparent 1.5px),
+		radial-gradient(circle at 76% 68%, rgba(69, 62, 52, 0.08) 0 1px, transparent 1.5px);
+	background-size: 100% 100%, 100% 100%, 31px 31px, 43px 43px;
+	pointer-events: none;
+}
+
+.pencil-paper::before,
+.pencil-paper::after {
+	content: '';
+	position: absolute;
+	inset-inline: -8%;
+	height: 43%;
+	pointer-events: none;
+	mix-blend-mode: multiply;
+}
+
+.pencil-paper::before {
+	top: 4%;
+	height: 39%;
+	background:
+		linear-gradient(168deg, transparent 0 23%, rgba(105, 78, 131, 0.22) 24% 48%, rgba(177, 137, 105, 0.2) 49% 67%, transparent 68%),
+		repeating-linear-gradient(168deg, rgba(78, 61, 92, 0.05) 0 1px, transparent 1px 9px);
+	clip-path: polygon(0 38%, 8% 31%, 19% 35%, 31% 22%, 45% 31%, 59% 25%, 72% 34%, 84% 18%, 100% 27%, 100% 100%, 0 100%);
+	transform: rotate(-1.5deg);
+	filter: blur(3px);
+}
+
+.pencil-paper::after {
+	bottom: 3%;
+	height: 37%;
+	background:
+		linear-gradient(12deg, transparent 0 26%, rgba(104, 115, 58, 0.16) 27% 43%, rgba(124, 91, 150, 0.2) 44% 61%, transparent 62%),
+		repeating-linear-gradient(12deg, rgba(78, 61, 92, 0.04) 0 1px, transparent 1px 11px);
+	clip-path: polygon(0 27%, 12% 34%, 25% 20%, 39% 31%, 53% 23%, 66% 36%, 79% 28%, 91% 38%, 100% 25%, 100% 100%, 0 100%);
+	transform: rotate(1deg);
+	filter: blur(4px);
+}
+
+/* Re-map the older palette into muted liquid ink. */
+[class*="bg-[#0A0A0B]"] { background-color: #4b365f !important; }
+[class*="bg-[#7C3AED]"] { background-color: #79528f !important; }
+[class*="bg-[#A78BFA]"] { background-color: #a982a8 !important; }
+[class*="text-[#7C3AED]"] { color: #68733a !important; }
+[class*="text-[#A78BFA]"] { color: #68733a !important; }
+[class*="border-[#7C3AED]"] { border-color: #79528f !important; }
+[class*="ring-[#7C3AED]"] { --tw-ring-color: rgb(121 82 143 / 0.2) !important; }
+[class*="from-[#7C3AED]"] { --tw-gradient-from: #79528f var(--tw-gradient-from-position) !important; }
+[class*="to-[#A78BFA]"] { --tw-gradient-to: #a982a8 var(--tw-gradient-to-position) !important; }
+[class*="to-[#C9A86A]"] { --tw-gradient-to: #b58b68 var(--tw-gradient-to-position) !important; }
+
+[dir='ltr'],
+.tabular-nums {
+	font-variant-numeric: tabular-nums lining-nums;
+	unicode-bidi: isolate;
+}
+
+input[type='date'],
+input[type='time'] {
+	direction: ltr;
+	text-align: left;
+	unicode-bidi: isolate;
+}

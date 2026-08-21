@@ -1,0 +1,78 @@
+.liquid-surface {
+	position: relative;
+	overflow: hidden;
+	isolation: isolate;
+}
+
+.liquid-surface__flow,
+.liquid-surface__sheen,
+.liquid-surface__ripple {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.liquid-surface__flow {
+	z-index: 0;
+	opacity: .72;
+	background:
+		radial-gradient(ellipse at 18% 70%, rgba(124, 58, 237, .88) 0 14%, transparent 42%),
+		radial-gradient(ellipse at 78% 24%, rgba(255, 255, 255, .78) 0 9%, transparent 36%),
+		radial-gradient(ellipse at 64% 82%, rgba(167, 139, 250, .48) 0 12%, transparent 38%),
+		linear-gradient(115deg, #09070f 0%, #171022 48%, #08080a 100%);
+	background-size: 145% 145%, 135% 135%, 150% 150%, 100% 100%;
+	animation: liquid-drift 11s ease-in-out infinite alternate;
+	mix-blend-mode: screen;
+}
+
+.liquid-surface__sheen {
+	z-index: 0;
+	opacity: .34;
+	background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,.42) 42%, transparent 58%);
+	transform: translateX(-110%);
+	animation: liquid-sheen 8s ease-in-out infinite;
+}
+
+.liquid-surface__ripple {
+	inset: auto;
+	z-index: 2;
+	width: 10px;
+	height: 10px;
+	border: 1px solid rgba(255,255,255,.85);
+	border-radius: 999px;
+	transform: translate(-50%, -50%);
+	box-shadow: 0 0 18px rgba(167,139,250,.8), 0 0 42px rgba(124,58,237,.6);
+	animation: liquid-ripple .7s cubic-bezier(.2,.75,.25,1) forwards;
+}
+
+.liquid-surface__content {
+	position: relative;
+	z-index: 1;
+}
+
+.liquid-surface > .liquid-surface__content > * {
+	position: relative;
+}
+
+@keyframes liquid-drift {
+	0% { background-position: 0% 75%, 100% 15%, 70% 100%, 0 0; }
+	50% { background-position: 65% 30%, 20% 70%, 20% 30%, 0 0; }
+	100% { background-position: 100% 65%, 0% 5%, 90% 20%, 0 0; }
+}
+
+@keyframes liquid-sheen {
+	0%, 20% { transform: translateX(-110%) rotate(8deg); }
+	65%, 100% { transform: translateX(110%) rotate(8deg); }
+}
+
+@keyframes liquid-ripple {
+	0% { width: 10px; height: 10px; opacity: .95; }
+	100% { width: 240px; height: 240px; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.liquid-surface__flow,
+	.liquid-surface__sheen {
+		animation: none;
+	}
+}

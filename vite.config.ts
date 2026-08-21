@@ -6,10 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(async ({ mode }) => {
   const plugins = [react(), tailwindcss()];
   try {
-    // @ts-ignore
-    const m = await import('./.vite-source-tags.js');
+    const sourceTagsModule = new URL('./.vite-source-tags.js', import.meta.url).href;
+    const m = await import(sourceTagsModule) as { sourceTags: () => typeof plugins[number] };
     plugins.push(m.sourceTags());
-  } catch {}
+  } catch (error) { void error }
 
   const env = loadEnv(mode, process.cwd(), ['VITE_', 'NEXT_PUBLIC_']);
   const processEnvDefines: Record<string, string> = {};
