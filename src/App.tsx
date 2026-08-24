@@ -73,10 +73,14 @@ type BirthdayPerson = {
   name: string
   description: string
   details: string
+  day: number
+  month: number
+  birthYear: number
 }
 
 // ---------- Constants ----------
 const hijriMonthNames = ["محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"]
+const gregorianMonthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"]
 const daysArFull = ["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"]
 const daysEnFull = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
@@ -106,85 +110,27 @@ const historicalPool: Record<number, string> = {
 }
 
 const notableBirthdays: Record<string, BirthdayPerson[]> = {
-  '01-01': [
-    { name: 'تشارلز ديفرو', description: 'كاتب ومؤلف', details: 'قدم إسهامات بارزة في الأدب الإنجليزي...' },
-    { name: 'جورج غوردون بايلي', description: 'مؤرخ وباحث', details: 'اشتهر بأعماله في تاريخ العلوم والرحلات...' }
-  ],
-  '01-02': [
-    { name: 'جاك شيراك', description: 'رئيس فرنسا السابق', details: 'قائد سياسي عُرف بإدارته الأوروبية...' },
-    { name: 'ميخائيل تيموفيتش', description: 'عالم روسي', details: 'ساهم في تطوير العلوم التطبيقية...' }
-  ],
-  '01-15': [
-    { name: 'محمود درويش', description: 'شاعر عربي', details: 'أحد أعظم شعراء القرن العشرين...' },
-    { name: 'ديفيد بوي', description: 'فنان موسيقي', details: 'من أبرز رموز الروك الحديث...' }
-  ],
-  '02-14': [
-    { name: 'عبد الرحمن الشمري', description: 'أديب وناقد', details: 'كاتب عربي معروف...' },
-    { name: 'إليزابيث تايلور', description: 'ممثلة بريطانية', details: 'من أشهر نجوم السينما العالمية...' }
-  ],
-  '03-08': [
-    { name: 'موسى بن نايف', description: 'قائد عربي', details: 'اشتهر بتأثيره في مجال الشؤون العامة...' },
-    { name: 'ألبيرت أينشتاين', description: 'عالم فيزيائي', details: 'صاغ نظرية النسبية...' }
-  ],
-  '03-15': [
-    { name: 'آنا وينتور', description: 'كاتبة', details: 'مؤلفة مشهورة...' },
-    { name: 'محمد بن سلمان', description: 'رئيس مجلس الوزراء السعودي', details: 'أحد أبرز القادة في المنطقة...' }
-  ],
-  '04-04': [
-    { name: 'شيراز', description: 'فنان', details: 'واحد من نجوم الثقافة...' },
-    { name: 'ديفيد بيكهام', description: 'لاعب كرة قدم', details: 'من أبرز لاعبي كرة القدم في القرن الحادي والعشرين...' }
-  ],
-  '04-15': [
-    { name: 'دانيال دي فو', description: 'مؤلف', details: 'أحد كبار الكتاب...' },
-    { name: 'توني بلير', description: 'رئيس وزراء بريطانيا', details: 'قائد سياسي بارز...' }
-  ],
-  '05-04': [
-    { name: 'إميلي ديكنز', description: 'روائية', details: 'كاتبة إنجليزية مشهورة...' },
-    { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي سابق', details: 'من قادة المملكة...' }
-  ],
-  '05-21': [
-    { name: 'راي تشارلز', description: 'مغني', details: 'رمز موسيقي عالمي...' },
-    { name: 'محمود سعيد', description: 'كاتب وروائي', details: 'شخصية إبداعية عربية...' }
-  ],
-  '06-15': [
-    { name: 'عبدالرحمن محمود', description: 'مطور ومبدع', details: 'من صناع التجارب الرقمية الحديثة...' },
-    { name: 'أندريه جليد', description: 'موسيقار', details: 'من أشهر الملحنين...' }
-  ],
-  '07-01': [
-    { name: 'فريدريك شوبان', description: 'ملحن', details: 'أحد أعظم الملحنين الكلاسيكيين...' },
-    { name: 'غاري كاسباروف', description: 'لاعب شطرنج', details: 'أحد أشهر أبطال الشطرنج...' }
-  ],
-  '07-14': [
-    { name: 'برناردو فيرنانديز', description: 'لاعب', details: 'من نجوم الكرة الدولية...' },
-    { name: 'نيكولاس سرفانتس', description: 'كاتب', details: 'مؤلف رواية دون كيخوطي...' }
-  ],
-  '08-15': [
-    { name: 'محمد عبد الوهاب', description: 'موسيقار', details: 'من أهم الملحنين في العالم العربي...' },
-    { name: 'أدولف هتلر', description: 'زعيم ألماني', details: 'قائد سياسي ومؤثر في التاريخ...' }
-  ],
-  '09-05': [
-    { name: 'آرثر كونان دويل', description: 'كاتب', details: 'مؤلف شيرلوك هولمز...' },
-    { name: 'رؤوف غنيم', description: 'مفكر عربي', details: 'من رواد الفكر...' }
-  ],
-  '09-11': [
-    { name: 'أوبرا وينفري', description: 'مذيعة', details: 'من أشهر الإعلاميين في العالم...' },
-    { name: 'سيباستيان كو', description: 'رياضي', details: 'قائد رياضي مميز...' }
-  ],
-  '10-12': [
-    { name: 'ديفيد هيل', description: 'رائد فني', details: 'مبدع معروف...' },
-    { name: 'إسماعيل ياسين', description: 'فنان', details: 'من رموز المسرح العربي...' }
-  ],
-  '11-09': [
-    { name: 'ديفيد بيكهام', description: 'لاعب', details: 'من أشهر لاعبي كرة القدم...' },
-    { name: 'إليانور روزفلت', description: 'سياسية', details: 'مؤثرة في التاريخ الأمريكي...' }
-  ],
-  '12-25': [
-    { name: 'آدم', description: 'شخصية تاريخية', details: 'من أهم الشخصيات في التراث الديني...' },
-    { name: 'جودت سليمان', description: 'فنان', details: 'من الفنانين المحترمين...' }
-  ]
+  '01-01': [{ name: 'فيرنر فون براون', description: 'عالم ومهندس صواريخ', details: 'من رواد تطوير الصواريخ والرحلات الفضائية.', day: 1, month: 1, birthYear: 1912 }],
+  '01-02': [{ name: 'إسحاق أسيموف', description: 'كاتب وعالم أحياء', details: 'من أشهر كتّاب الخيال العلمي.', day: 2, month: 1, birthYear: 1920 }],
+  '01-15': [{ name: 'مارتن لوثر كينغ', description: 'ناشط في الحقوق المدنية', details: 'قاد حركة مؤثرة للمساواة والحقوق المدنية.', day: 15, month: 1, birthYear: 1929 }],
+  '02-14': [{ name: 'سيمون بيغ', description: 'ممثل وكاتب', details: 'ممثل وكاتب ومنتج بريطاني معروف.', day: 14, month: 2, birthYear: 1970 }],
+  '03-14': [{ name: 'ألبرت أينشتاين', description: 'عالم فيزياء', details: 'أحد أبرز علماء الفيزياء وصاحب نظرية النسبية.', day: 14, month: 3, birthYear: 1879 }],
+  '04-04': [{ name: 'ديفيد بيكهام', description: 'لاعب كرة قدم', details: 'لاعب كرة قدم إنجليزي وقائد سابق لمنتخب بلاده.', day: 4, month: 4, birthYear: 1975 }],
+  '04-15': [{ name: 'إيما واتسون', description: 'ممثلة وناشطة', details: 'ممثلة وناشطة بريطانية في قضايا التعليم والمساواة.', day: 15, month: 4, birthYear: 1990 }],
+  '05-04': [{ name: 'أودري هيبورن', description: 'ممثلة وناشطة إنسانية', details: 'نجمة سينمائية وسفيرة للنوايا الحسنة.', day: 4, month: 5, birthYear: 1929 }],
+  '05-21': [{ name: 'راي تشارلز', description: 'مغني وعازف', details: 'من أبرز مؤسسي موسيقى السول الحديثة.', day: 21, month: 5, birthYear: 1930 }],
+  '06-15': [{ name: 'عبدالرحمن محمود', description: 'مطور ومبدع', details: 'من صناع التجارب الرقمية الحديثة.', day: 15, month: 6, birthYear: 1998 }],
+  '07-01': [{ name: 'الأميرة ديانا', description: 'شخصية عامة وناشطة', details: 'اشتهرت بأعمالها الإنسانية حول العالم.', day: 1, month: 7, birthYear: 1961 }],
+  '07-14': [{ name: 'غوستاف كليمت', description: 'رسام', details: 'من أبرز فناني الحركة الرمزية الحديثة.', day: 14, month: 7, birthYear: 1862 }],
+  '08-15': [{ name: 'محمد عبد الوهاب', description: 'موسيقار وملحن', details: 'من أهم الملحنين والموسيقيين في العالم العربي.', day: 15, month: 8, birthYear: 1902 }],
+  '09-05': [{ name: 'آرثر كونان دويل', description: 'كاتب وطبيب', details: 'مؤلف شخصية المحقق الشهير شيرلوك هولمز.', day: 5, month: 9, birthYear: 1859 }],
+  '09-11': [{ name: 'أوبرا وينفري', description: 'إعلامية ومنتجة', details: 'من أشهر الإعلاميات والمنتجات في العالم.', day: 11, month: 9, birthYear: 1954 }],
+  '10-12': [{ name: 'لوتشيانو بافاروتي', description: 'مغني أوبرا', details: 'من أشهر أصوات الأوبرا في القرن العشرين.', day: 12, month: 10, birthYear: 1935 }],
+  '11-09': [{ name: 'كارل سيغان', description: 'عالم فلك وكاتب', details: 'ساهم في تبسيط علوم الفضاء للجمهور.', day: 9, month: 11, birthYear: 1934 }],
+  '12-25': [{ name: 'همفري بوغارت', description: 'ممثل', details: 'من أبرز نجوم العصر الذهبي للسينما الأمريكية.', day: 25, month: 12, birthYear: 1899 }]
 }
 
-const monthFallbackBirthdays: Record<string, BirthdayPerson[]> = {
+/*
   '01': [
     { name: 'محمود درويش', description: 'شاعر عربي', details: 'أحد أشهر الشعراء العرب في القرن العشرين.' },
     { name: 'تشارلز ديفرو', description: 'كاتب ومؤلف', details: 'مؤلف مشهور في الأدب الإنجليزي.' },
@@ -245,8 +191,7 @@ const monthFallbackBirthdays: Record<string, BirthdayPerson[]> = {
     { name: 'جودت سليمان', description: 'فنان', details: 'من أبرز الفنانين في المنطقة.' },
     { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي', details: 'من قادة المملكة العربية السعودية.' }
   ]
-}
-
+*/
 const uiText = {
   ar: {
     title: 'عُـمـري',
@@ -562,6 +507,7 @@ export default function App(){
   const [result, setResult] = useState<Result|null>(null)
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
+  const [hijriCopied, setHijriCopied] = useState(false)
   const [shareStatus, setShareStatus] = useState("")
   const [language, setLanguage] = useState<'ar' | 'en'>(() => {
     try {
@@ -834,6 +780,17 @@ export default function App(){
     try{ await navigator.clipboard.writeText(t) }catch{ /* fallback */ }
     setCopied(true); setTimeout(()=>setCopied(false),2000)
   }
+
+  const copyHijriBirth = async() => {
+    if(!result) return
+    try {
+      await navigator.clipboard.writeText(`${result.hijriBirth.formatted} | ${result.birthStrAr}`)
+    } catch {
+      // fallback intentionally ignored
+    }
+    setHijriCopied(true)
+    setTimeout(() => setHijriCopied(false), 2000)
+  }
   const rateApp = (rating:number) => {
     setUserRating(rating)
     try { localStorage.setItem('omri-rating', String(rating)) } catch { /* storage may be disabled */ }
@@ -1029,7 +986,7 @@ export default function App(){
     const month = birthStr.slice(5, 7)
     const day = birthStr.slice(8, 10)
     const key = `${month}-${day}`
-    const people = notableBirthdays[key] ?? monthFallbackBirthdays[month] ?? []
+    const people = notableBirthdays[key] ?? []
     setBirthdayPeople(people.slice(0, 6))
   }, [birthStr])
 
@@ -1262,11 +1219,11 @@ export default function App(){
 
           {/* Celebration */}
           {result.nextGreg.days===0 && (
-            <div className="bg-gradient-to-l from-[#7C3AED] to-[#A78BFA] rounded-[20px] p-4 flex items-center gap-3 border border-[#7C3AED]/20 text-white">
+            <div className="bg-gradient-to-l from-[#5B21B6] to-[#7C3AED] rounded-[20px] p-4 flex items-center gap-3 border border-[#4C1D95] text-white shadow-[0_8px_24px_rgba(91,33,182,0.2)]">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-lg shrink-0">🎉</div>
               <div className="min-w-0">
-                <div className="font-black">عيد ميلاد سعيد! اليوم عيد ميلادك 🎂</div>
-                <div className="text-xs font-bold text-white/80 truncate">أطال الله عمرك — شارك فرحتك مع من تحب</div>
+                <div className="font-black text-white">عيد ميلاد سعيد! اليوم عيد ميلادك 🎂</div>
+                <div className="text-xs font-bold text-white truncate">أطال الله عمرك — شارك فرحتك مع من تحب</div>
               </div>
               <button onClick={share} className="mr-auto bg-white text-[#7C3AED] rounded-full px-4 py-2 text-xs font-black hidden sm:inline-flex shrink-0">مشاركة</button>
             </div>
@@ -1347,7 +1304,12 @@ export default function App(){
                       <div className="text-[11px] font-bold tracking-widest text-white/50">HIJRI • أم القرى</div>
                     </div>
                   </div>
-                  <span className="bg-white text-[#0A0A0B] text-[11px] font-black px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap">{result.hijriBirth.formatted}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="bg-white text-[#0A0A0B] text-[11px] font-black px-2.5 py-1 rounded-full whitespace-nowrap">{result.hijriBirth.formatted}</span>
+                    <button onClick={copyHijriBirth} className="h-8 w-8 rounded-full bg-white/10 border border-white/10 flex items-center justify-center hover:bg-white/15 active:scale-95" aria-label="نسخ تاريخ الميلاد الهجري" title="نسخ تاريخ الميلاد الهجري">
+                      {hijriCopied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4 text-white" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -1629,7 +1591,8 @@ export default function App(){
                       <div className="w-16 h-16 rounded-xl bg-[#0A0A0B] text-white flex items-center justify-center shrink-0"><Users className="w-6 h-6" /></div>
                       <div className="min-w-0">
                         <div className="text-sm font-black text-[#0A0A0B]">{person.name}</div>
-                        <div className="text-[11px] font-bold text-[#7C3AED] mt-1">{person.description}</div>
+                        <div className="text-[12px] font-black text-[#7C3AED] mt-1 leading-relaxed">في مثل هذا اليوم، {formatNumber(person.day)} {gregorianMonthNames[person.month - 1]} سنة {formatNumber(person.birthYear)} وُلد {person.name}</div>
+                        <div className="text-[11px] font-bold text-[#52525B] mt-1">{person.description}</div>
                         <p className="text-[12px] leading-relaxed text-[#52525B] mt-1 line-clamp-3">{person.details}</p>
                       </div>
                     </div>
