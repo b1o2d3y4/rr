@@ -7,7 +7,8 @@ import {
   Globe, Hourglass, Sun,
   Crown, Baby, GraduationCap, Briefcase,
   Atom, ChevronDown, Zap, Users, Award,
-  Infinity as InfinityIcon, Link2, Gem, Diamond, AlertCircle
+  Infinity as InfinityIcon, Link2, Gem, Diamond, AlertCircle,
+  Download, Bell
 } from 'lucide-react'
 
 // ---------- Types ----------
@@ -68,6 +69,14 @@ type Result = {
     loading: boolean
   }
 }
+type WikipediaPerson = {
+  pageid: number
+  title: string
+  extract?: string
+  description?: string
+  content_urls?: { desktop?: { page?: string } }
+  thumbnail?: { source?: string }
+}
 
 // ---------- Constants ----------
 const hijriMonthNames = ["محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"]
@@ -98,6 +107,55 @@ const historicalPool: Record<number, string> = {
   5: "يوم السبت يوم الاكتشافات التي حلّقت بالإنسان، من أول طائرة إلى آفاق السماء.",
   6: "يوم الأحد يوم الأحداث التي هزّت العالم وأعادت تعريفه، تذكير بقوة اللحظة."
 }
+
+const uiText = {
+  ar: {
+    title: 'عُـمـري',
+    subtitle: 'HIJRI & GREGORIAN',
+    share: 'مشاركة',
+    downloadCard: 'تحميل البطاقة',
+    language: 'EN',
+    inputLabel: 'تاريخ الميلاد',
+    birthdayToday: 'عيد ميلاد سعيد!',
+    nextBirthday: 'عيد ميلادك القادم',
+    eventsTitle: 'أحداث في مثل هذا اليوم',
+    reminderTitle: 'تذكير المحطات',
+    reminderSave: 'تم حفظ تاريخ الميلاد محلياً',
+    reminderText: 'سأذكرك عندما يقترب أحد المحطات المهمة.',
+    quick: 'سريع',
+    theme: 'المعنى',
+    countDownLabel: 'المتبقي حتى عيد الميلاد',
+    friendly: 'باقي للعيد',
+    shareCardTitle: 'بطاقتي العمرية',
+    shareCardCaption: 'مشاركة بطاقة العمر',
+    noEvent: 'لا توجد أحداث مميزة في هذا التاريخ.',
+    todayDate: 'تاريخ اليوم',
+    saved: 'تم الحفظ محلياً'
+  },
+  en: {
+    title: 'My Age',
+    subtitle: 'HIJRI & GREGORIAN',
+    share: 'Share',
+    downloadCard: 'Download Card',
+    language: 'AR',
+    inputLabel: 'Birth Date',
+    birthdayToday: 'Happy Birthday!',
+    nextBirthday: 'Next Birthday',
+    eventsTitle: 'Events on this day',
+    reminderTitle: 'Milestone Reminder',
+    reminderSave: 'Birth date saved locally',
+    reminderText: 'I will remind you when a special milestone is near.',
+    quick: 'Quick',
+    theme: 'Insight',
+    countDownLabel: 'Until next birthday',
+    friendly: 'days left',
+    shareCardTitle: 'My age card',
+    shareCardCaption: 'Share my age card',
+    noEvent: 'No notable events for this date.',
+    todayDate: 'Today',
+    saved: 'Saved locally'
+  }
+} as const
 
 // ---------- Cached Hijri ----------
 const hijriCache = new Map<string, HijriParts>()
@@ -366,6 +424,26 @@ export default function App(){
   const [error, setError] = useState("")
   const [copied, setCopied] = useState(false)
   const [shareStatus, setShareStatus] = useState("")
+  const [language, setLanguage] = useState<'ar' | 'en'>(() => {
+    try {
+      const saved = localStorage.getItem('age-app-language')
+      return saved === 'en' ? 'en' : 'ar'
+    } catch {
+      return 'ar'
+    }
+  })
+  const [savedBirthDate] = useState<string>(() => {
+    try {
+      return localStorage.getItem('saved-birth-date') || '1998-06-15'
+    } catch {
+      return '1998-06-15'
+    }
+  })
+  const [reminderVisible, setReminderVisible] = useState(false)
+  const [wikiPeople, setWikiPeople] = useState<WikipediaPerson[]>([])
+  const [wikiLoading, setWikiLoading] = useState(false)
+  const [wikiError, setWikiError] = useState(false)
+  const [selectedCardTypes, setSelectedCardTypes] = useState<string[]>(['summary', 'calendars', 'milestones', 'full'])
   const [userRating, setUserRating] = useState<number>(() => {
     try {
       const saved = Number(localStorage.getItem('omri-rating'))
@@ -598,7 +676,24 @@ export default function App(){
   const copyResult = async() => {
     if(!result) return
     const goldenNext = result.golden.nextExact ? `${result.golden.nextExact.gregStr} (${result.golden.nextExact.hijriStr})` : (result.golden.nextNearest ? `${result.golden.nextNearest.gregStr} بفارق ${result.golden.nextNearest.distance} يوم` : '—')
-    const t = `عمري ${result.greg.years} سنة و ${result.greg.months} شهر و ${result.greg.days} يوم — وبالهجري ${result.hijriAge.years} سنة و ${result.hijriAge.months} شهر و ${result.hijriAge.days} يوم — مولود يوم ${result.dayNameAr} ${result.birthStrAr} — التطابق القادم: ${goldenNext}`
+    const eventsText = wikiPeople.length > 0 ? wikiPeople.map(person => `${person.title}: ${person.extract || person.description || 'نبذة غير متاحة'}`).join('\n') : 'لا توجد بيانات أشخاص متاحة لهذا التاريخ.'
+    const milestonesText = result.milestones.map(item => `${item.title}: ${item.dateStr}${item.isPast ? ' (تمت)' : ` (بعد ${item.daysUntil} يوم)`}`).join('\n')
+    const planetText = result.planetAges.map(planet => `${planet.name}: ${planet.age}`).join('، ')
+    const t = [
+      'بطاقة عُمري',
+      `العمر الميلادي: ${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`,
+      `العمر الهجري: ${result.hijriAge.years} سنة و${result.hijriAge.months} شهر و${result.hijriAge.days} يوم`,
+      `تاريخ الميلاد: ${result.birthStrAr} | ${result.hijriBirth.formatted}`,
+      `يوم الميلاد: ${result.dayNameAr} (${result.dayNameEn})`,
+      `إجمالي الأيام: ${formatNumber(result.totalDays)} | الساعات: ${formatNumber(result.totalHours)} | الدقائق: ${formatNumber(result.totalMinutes)}`,
+      `عيد الميلاد القادم: ${result.nextGreg.dateStr} بعد ${result.nextGreg.days} يوم`,
+      `التطابق القادم: ${goldenNext}`,
+      `البرج: ${result.zodiac.name} — ${result.zodiac.desc}`,
+      `الأعمار على الكواكب: ${planetText}`,
+      'محطات العمر:\n' + milestonesText,
+      'أشخاص ولدوا في مثل هذا اليوم:\n' + eventsText,
+      `المصدر: https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${Number(birthStr.slice(5, 7))}/${Number(birthStr.slice(8, 10))}`
+    ].join('\n')
     try{ await navigator.clipboard.writeText(t) }catch{ /* fallback */ }
     setCopied(true); setTimeout(()=>setCopied(false),2000)
   }
@@ -606,6 +701,158 @@ export default function App(){
     setUserRating(rating)
     try { localStorage.setItem('omri-rating', String(rating)) } catch { /* storage may be disabled */ }
   }
+
+  const shareCardImage = useCallback(() => {
+    if (!result) return
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 1000
+    canvas.height = 1400
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const gradient = ctx.createLinearGradient(0, 0, 1000, 1400)
+    gradient.addColorStop(0, '#0b0b12')
+    gradient.addColorStop(0.45, '#1e132b')
+    gradient.addColorStop(1, '#120f18')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const cardX = 70
+    const cardY = 110
+    const cardW = 860
+    const cardH = 1180
+
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'
+    ctx.fillRect(cardX, cardY, cardW, cardH)
+    roundRect(ctx, cardX, cardY, cardW, cardH, 36)
+    ctx.fillStyle = '#1d132b'
+    ctx.fill()
+
+    const glow = ctx.createRadialGradient(500, 260, 70, 500, 260, 340)
+    glow.addColorStop(0, 'rgba(150, 94, 255, 0.7)')
+    glow.addColorStop(1, 'rgba(150, 94, 255, 0)')
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.fillStyle = '#f5e7b3'
+    ctx.font = '700 60px Tajawal'
+    ctx.textAlign = 'center'
+    ctx.fillText(language === 'ar' ? 'بطاقتي العمرية' : 'My age card', 500, 210)
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 34px Tajawal'
+    ctx.fillText(`${result.greg.years}Y / ${result.hijriAge.years}H`, 500, 300)
+
+    ctx.fillStyle = '#f5e7b3'
+    ctx.font = '700 26px Tajawal'
+    ctx.fillText(language === 'ar' ? 'العمري' : 'Age summary', 500, 360)
+
+    const stats = [
+      { label: language === 'ar' ? 'سنوات' : 'Years', value: String(result.greg.years) },
+      { label: language === 'ar' ? 'أشهر' : 'Months', value: String(result.greg.months) },
+      { label: language === 'ar' ? 'أيام' : 'Days', value: String(result.greg.days) },
+    ]
+
+    stats.forEach((item, index) => {
+      const x = 220 + index * 240
+      const y = 470
+      roundRect(ctx, x, y, 180, 160, 22)
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '700 54px Tajawal'
+      ctx.textAlign = 'center'
+      ctx.fillText(item.value, x + 90, y + 82)
+      ctx.fillStyle = '#d8c7f3'
+      ctx.font = '600 22px Tajawal'
+      ctx.fillText(item.label, x + 90, y + 124)
+    })
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 28px Tajawal'
+    ctx.textAlign = 'center'
+    ctx.fillText(language === 'ar' ? 'تاريخ الميلاد' : 'Birth date', 500, 770)
+
+    ctx.fillStyle = '#d8c7f3'
+    ctx.font = '600 24px Tajawal'
+    ctx.fillText(result.birthStrAr || result.birthGregStr, 500, 820)
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '700 28px Tajawal'
+    ctx.fillText(language === 'ar' ? 'عيد الميلاد القادم' : 'Next birthday', 500, 930)
+
+    ctx.fillStyle = '#f5e7b3'
+    ctx.font = '700 30px Tajawal'
+    ctx.fillText(`${result.nextGreg.days} ${language === 'ar' ? 'أيام' : 'days'}`, 500, 980)
+
+    ctx.fillStyle = '#d8c7f3'
+    ctx.font = '600 22px Tajawal'
+    ctx.fillText(result.nextGreg.dateStr, 500, 1025)
+
+    const a = document.createElement('a')
+    a.href = canvas.toDataURL('image/png')
+    a.download = 'my-age-card.png'
+    a.click()
+  }, [result, language])
+
+  const downloadSelectedCards = useCallback(() => {
+    if (!result || selectedCardTypes.length === 0) return
+    const labels: Record<string, string> = {
+      summary: language === 'ar' ? 'ملخص عمري' : 'Age summary',
+      calendars: language === 'ar' ? 'الميلادي والهجري' : 'Gregorian and Hijri',
+      milestones: language === 'ar' ? 'محطات حياتي' : 'Life milestones',
+      full: language === 'ar' ? 'تفاصيل عمري كاملة' : 'Full age details'
+    }
+    const cards: Record<string, string[]> = {
+      summary: [`${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `مولود يوم ${result.dayNameAr}`, result.birthStrAr, `عيد الميلاد القادم بعد ${result.nextGreg.days} يوم`],
+      calendars: [`ميلادي: ${result.birthStrAr}`, `هجري: ${result.hijriBirth.formatted}`, `العمر الميلادي: ${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `العمر الهجري: ${result.hijriAge.years} سنة و${result.hijriAge.months} شهر و${result.hijriAge.days} يوم`],
+      milestones: result.milestones.map(item => `${item.title}: ${item.dateStr}${item.isPast ? ' — تمت' : ` — بعد ${item.daysUntil} يوم`}`),
+      full: [`${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `ميلادي: ${result.birthStrAr}`, `هجري: ${result.hijriBirth.formatted}`, `يوم الميلاد: ${result.dayNameAr} (${result.dayNameEn})`, `العيد القادم: ${result.nextGreg.dateStr} — بعد ${result.nextGreg.days} يوم`, `البرج: ${result.zodiac.name} — ${result.zodiac.desc}`, `الأيام: ${formatNumber(result.totalDays)} | الساعات: ${formatNumber(result.totalHours)}`, `الكواكب: ${result.planetAges.map(planet => `${planet.name} ${planet.age}`).join('، ')}`, ...result.milestones.map(item => `${item.title}: ${item.dateStr}`)]
+    }
+    selectedCardTypes.forEach((type, index) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 1200
+      canvas.height = 1500
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 1500)
+      gradient.addColorStop(0, '#0A0A0B')
+      gradient.addColorStop(0.55, '#26153A')
+      gradient.addColorStop(1, '#111014')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = '#F5E7B3'
+      ctx.textAlign = 'center'
+      ctx.font = '700 58px Tajawal'
+      ctx.fillText('عُمري', 600, 150)
+      ctx.font = '700 38px Tajawal'
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillText(labels[type] || labels.full, 600, 245)
+      ctx.textAlign = 'right'
+      ctx.font = '600 28px Tajawal'
+      const lines = cards[type] || cards.full
+      lines.forEach((line, lineIndex) => {
+        const y = 340 + lineIndex * 82
+        roundRect(ctx, 100, y - 48, 1000, 62, 16)
+        ctx.fillStyle = 'rgba(255,255,255,0.09)'
+        ctx.fill()
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillText(line.slice(0, 68), 1040, y - 8)
+      })
+      ctx.textAlign = 'center'
+      ctx.font = '500 22px Tajawal'
+      ctx.fillStyle = '#D8C7F3'
+      ctx.fillText('omry.app • حاسبة العمر بالميلادي والهجري', 600, 1430)
+      const anchor = document.createElement('a')
+      anchor.href = canvas.toDataURL('image/png')
+      anchor.download = `omry-${type}-${index + 1}.png`
+      anchor.click()
+    })
+    setShareStatus(language === 'ar' ? `تم تحميل ${selectedCardTypes.length} بطاقة` : `${selectedCardTypes.length} cards downloaded`)
+    setTimeout(() => setShareStatus(''), 2500)
+  }, [result, language, selectedCardTypes])
+
   const share = async() => {
     if(!result) return
     const shareText = `عمري ${result.greg.years} سنة و ${result.greg.months} شهر و ${result.greg.days} يوم — مولود يوم ${result.dayNameAr} ${result.birthStrAr}`
@@ -638,6 +885,85 @@ export default function App(){
     {label:"2002", v:"2002-11-03"},
   ]
 
+  const t = uiText[language]
+
+  useEffect(() => {
+    if (!birthStr) return
+    const controller = new AbortController()
+    const formattedMonth = Number(birthStr.slice(5, 7))
+    const formattedDay = Number(birthStr.slice(8, 10))
+    setWikiLoading(true)
+    setWikiError(false)
+    fetch(`https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${formattedMonth}/${formattedDay}`, {
+      headers: { 'User-Agent': 'OmryApp/1.0 (contact@omry.app)' },
+      signal: controller.signal
+    })
+      .then(response => {
+        if (!response.ok) throw new Error(`Wikipedia request failed: ${response.status}`)
+        return response.json() as Promise<{ births?: WikipediaPerson[] }>
+      })
+      .then(data => setWikiPeople((data.births || []).filter(person => person.title).slice(0, 8)))
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setWikiPeople([])
+        setWikiError(true)
+      })
+      .finally(() => setWikiLoading(false))
+    return () => controller.abort()
+  }, [birthStr])
+
+  const reminderMilestones = useMemo(() => {
+    if (!result) return []
+    return result.milestones.filter(item => !item.isPast && item.daysUntil <= 30 && item.daysUntil >= 0).slice(0, 3)
+  }, [result])
+
+  const saveBirthDateLocally = useCallback(() => {
+    try {
+      localStorage.setItem('saved-birth-date', birthStr)
+      setReminderVisible(true)
+      setTimeout(() => setReminderVisible(false), 2200)
+    } catch {
+      setShareStatus(language === 'ar' ? 'تعذر حفظ التاريخ محلياً' : 'Unable to save locally')
+    }
+  }, [birthStr, language])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('age-app-language', language)
+    } catch {
+      // ignore
+    }
+  }, [language])
+
+  useEffect(() => {
+    if (!birthStr) return
+    try {
+      localStorage.setItem('saved-birth-date', birthStr)
+    } catch { /* ignore */ }
+  }, [birthStr])
+
+  useEffect(() => {
+    if (!result) return
+    const near = result.milestones.filter(item => !item.isPast && item.daysUntil <= 30 && item.daysUntil >= 0)
+    if (near.length > 0) {
+      setReminderVisible(true)
+    }
+  }, [result])
+
+  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+    ctx.beginPath()
+    ctx.moveTo(x + radius, y)
+    ctx.lineTo(x + width - radius, y)
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
+    ctx.lineTo(x + width, y + height - radius)
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+    ctx.lineTo(x + radius, y + height)
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
+    ctx.lineTo(x, y + radius)
+    ctx.quadraticCurveTo(x, y, x + radius, y)
+    ctx.closePath()
+  }
+
   return (
     <div dir="rtl" className="liquid-page min-h-screen bg-[#F7F4EE] text-[#0A0A0B] selection:bg-[#68733A] selection:text-white overflow-x-hidden antialiased" style={{fontFamily:"Tajawal, 'Noto Sans Arabic', 'Segoe UI', sans-serif"}}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Sans+Arabic:wght@400;500;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap'); *{ -webkit-font-smoothing: antialiased; } input[type="date"], input[type="time"]{ -webkit-appearance: none; }`}</style>
@@ -667,8 +993,22 @@ export default function App(){
 
           <div className="flex items-center gap-2 shrink-0">
             <LiveDateHeader/>
+            <button
+              type="button"
+              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+              className="hidden sm:inline-flex items-center justify-center min-w-[56px] bg-[#0A0A0B] text-white rounded-full px-3 py-2 text-[11px] font-black transition active:scale-[0.98]"
+            >
+              {t.language}
+            </button>
             <button onClick={share} type="button" aria-label="مشاركة نتيجة العمر" className="hidden sm:inline-flex items-center gap-1.5 bg-[#0A0A0B] hover:bg-black text-white rounded-full px-4 py-2 text-xs font-bold transition active:scale-[0.98]">
-              <Share2 className="w-3.5 h-3.5"/> مشاركة
+              <Share2 className="w-3.5 h-3.5"/> {t.share}
+            </button>
+            <button
+              type="button"
+              onClick={shareCardImage}
+              className="hidden sm:inline-flex items-center gap-1.5 border border-[#E4E4E7] bg-white text-[#0A0A0B] rounded-full px-4 py-2 text-xs font-bold transition active:scale-[0.98]"
+            >
+              <Download className="w-3.5 h-3.5"/> {t.downloadCard}
             </button>
             {shareStatus && <span role="status" className="fixed top-[72px] left-1/2 -translate-x-1/2 z-50 rounded-full bg-[#4b365f] px-4 py-2 text-xs font-bold text-white shadow-lg whitespace-nowrap">{shareStatus}</span>}
           </div>
@@ -680,18 +1020,18 @@ export default function App(){
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-6 md:gap-8 items-start">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 bg-white border border-[#E8E6E1] shadow-sm rounded-full px-2 py-1 pr-1 max-w-full">
-              <span className="bg-[#7C3AED] text-white text-[11px] font-black px-2.5 py-1 rounded-full shrink-0">جديد</span>
-              <span className="text-xs font-bold text-[#0A0A0B] truncate">حساب العمر بالهجري والميلادي معاً — بالتفصيل</span>
+              <span className="bg-[#7C3AED] text-white text-[11px] font-black px-2.5 py-1 rounded-full shrink-0">{language === 'ar' ? 'جديد' : 'New'}</span>
+              <span className="text-xs font-bold text-[#0A0A0B] truncate">{language === 'ar' ? 'حساب العمر بالهجري والميلادي معاً — بالتفصيل' : 'Calculate age in both Hijri and Gregorian calendars — in detail'}</span>
               <span className="w-6 h-6 rounded-full bg-[#0A0A0B] text-white flex items-center justify-center shrink-0"><Sparkles className="w-3 h-3"/></span>
             </div>
 
             <h1 className="text-[30px] md:text-[44px] font-black leading-[0.95] tracking-tight text-[#0A0A0B] mt-4">
-              اعرف عمرك
-              <span className="block text-[#B08D3C] pb-1" style={{fontFamily:"'Amiri',serif"}}>بالسنة والشهر واليوم</span>
-              <span className="block text-[20px] md:text-[24px] font-bold text-[#18181B] mt-1">بالميلادي <span className="text-[#71717A] font-normal">و</span> الهجري — بدقة</span>
+              {language === 'ar' ? 'اعرف عمرك' : 'Know your age'}
+              <span className="block text-[#B08D3C] pb-1" style={{fontFamily:"'Amiri',serif"}}>{language === 'ar' ? 'بالسنة والشهر واليوم' : 'by years, months and days'}</span>
+              <span className="block text-[20px] md:text-[24px] font-bold text-[#18181B] mt-1">{language === 'ar' ? 'بالميلادي' : 'Gregorian'} <span className="text-[#71717A] font-normal">{language === 'ar' ? 'و' : 'and'}</span> {language === 'ar' ? 'الهجري — بدقة' : 'Hijri — with precision'}</span>
             </h1>
             <p className="text-[#52525B] text-[14px] md:text-[15px] leading-relaxed mt-3 max-w-[520px]">
-              حاسبة سريعة وخفيفة تحسب عمرك التفصيلي بالتقويمين، مع يوم ميلادك، برجك، والعدّ التنازلي لعيد ميلادك القادم — بدون تأخير وبدون إعلانات.
+              {language === 'ar' ? 'حاسبة سريعة وخفيفة تحسب عمرك التفصيلي بالتقويمين، مع يوم ميلادك، برجك، والعدّ التنازلي لعيد ميلادك القادم — بدون تأخير وبدون إعلانات.' : 'A fast, lightweight calculator that shows your age in both calendars, your birth day, zodiac sign, and the countdown to your next birthday — without delays or ads.'}
             </p>
 
             <div className="flex flex-wrap items-center gap-3 mt-5">
@@ -777,7 +1117,7 @@ export default function App(){
                 )}
 
                 <button onClick={()=> doCalculate()} className="w-full h-[54px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-black text-[15px] flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(124,58,237,0.25)] transition active:scale-[0.99]">
-                  <Sparkles className="w-4 h-4"/> احسب عمري الآن <ArrowLeft className="w-4 h-4"/>
+                  <Sparkles className="w-4 h-4"/> {language === 'ar' ? 'احسب عمري الآن' : 'Calculate my age now'} <ArrowLeft className="w-4 h-4"/>
                 </button>
 
                 <div className="flex items-center justify-between text-[11px] font-medium text-[#71717A] pt-2 border-t border-[#F4F4F5] gap-2">
@@ -788,7 +1128,7 @@ export default function App(){
             </div>
 
             <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-[#71717A] px-2 text-center">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"/> كل الحسابات على جهازك — لا نرسل بياناتك
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0"/> {language === 'ar' ? 'كل الحسابات على جهازك — لا نرسل بياناتك' : 'All calculations stay on your device — we do not send your data'}
             </div>
           </div>
         </div>
@@ -1093,33 +1433,33 @@ export default function App(){
           <div className="grid lg:grid-cols-12 gap-4">
             <div className="lg:col-span-7 grid sm:grid-cols-2 gap-4">
               <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
-                <div className="flex items-center gap-2 text-[#7C3AED] text-xs font-black tracking-widest mb-3"><Sun className="w-4 h-4"/> يوم ميلادك</div>
+                <div className="flex items-center gap-2 text-[#7C3AED] text-xs font-black tracking-widest mb-3"><Sun className="w-4 h-4"/> {language === 'ar' ? 'يوم ميلادك' : 'Your birthday'}</div>
                 <div className="text-2xl font-black text-[#0A0A0B] break-words">{result.dayNameAr}</div>
                 <div className="text-xs font-bold tracking-widest text-[#71717A] break-words" dir="ltr">{result.dayNameEn}</div>
-                <div className="mt-3 inline-flex items-center gap-2 bg-[#FAFAF9] border border-[#E8E6E1] rounded-full px-3 py-1.5 text-xs font-bold max-w-full"><span className="w-7 h-7 rounded-full bg-[#0A0A0B] text-white flex items-center justify-center text-sm shrink-0">🌙</span> <span className="truncate">وُلدت يوم {result.dayNameAr}</span></div>
+                <div className="mt-3 inline-flex items-center gap-2 bg-[#FAFAF9] border border-[#E8E6E1] rounded-full px-3 py-1.5 text-xs font-bold max-w-full"><span className="w-7 h-7 rounded-full bg-[#0A0A0B] text-white flex items-center justify-center text-sm shrink-0">🌙</span> <span className="truncate">{language === 'ar' ? `وُلدت يوم ${result.dayNameAr}` : `Born on ${result.dayNameEn}`}</span></div>
                 <div className="mt-4 bg-[#FAFAF9] border border-[#E8E6E1] rounded-2xl p-3">
-                  <div className="text-[11px] font-black text-[#B08D3C] mb-1 flex items-center gap-1"><History className="w-3 h-3"/> حدث تاريخي</div>
+                  <div className="text-[11px] font-black text-[#B08D3C] mb-1 flex items-center gap-1"><History className="w-3 h-3"/> {language === 'ar' ? 'حدث تاريخي' : 'Historical note'}</div>
                   <p className="text-[13px] leading-relaxed font-bold text-[#0A0A0B] break-words">{historicalPool[result.dayIndex]}</p>
                   <p className="text-[11px] text-[#71717A] mt-2 leading-relaxed break-words">{result.yearContext}</p>
                 </div>
               </div>
 
               <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
-                <div className="flex items-center gap-2 text-[#0A0A0B] text-xs font-black tracking-widest mb-3"><Crown className="w-4 h-4 text-[#7C3AED]"/> برجك وصفاتك</div>
+                <div className="flex items-center gap-2 text-[#0A0A0B] text-xs font-black tracking-widest mb-3"><Crown className="w-4 h-4 text-[#7C3AED]"/> {language === 'ar' ? 'برجك وصفاتك' : 'Your sign & traits'}</div>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-[#0A0A0B] text-white flex items-center justify-center text-xl font-black shrink-0">{result.zodiac.icon}</div>
                   <div className="min-w-0">
-                    <div className="font-black text-[#0A0A0B] truncate">برج {result.zodiac.name}</div>
+                    <div className="font-black text-[#0A0A0B] truncate">{language === 'ar' ? `برج ${result.zodiac.name}` : `${result.zodiac.name} sign`}</div>
                     <div className="text-xs font-bold text-[#7C3AED] truncate">{result.zodiac.desc}</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0"><div className="text-lg">{result.season.icon}</div><div className="text-xs font-black text-[#0A0A0B] truncate">مواليد {result.season.name}</div><div className="text-[11px] text-[#71717A]">فصل الميلاد</div></div>
-                  <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0"><div className="text-lg">👥</div><div className="text-xs font-black text-[#0A0A0B] truncate">{result.generation}</div><div className="text-[11px] text-[#71717A] truncate">جيلك</div></div>
+                  <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0"><div className="text-lg">{result.season.icon}</div><div className="text-xs font-black text-[#0A0A0B] truncate">{language === 'ar' ? `مواليد ${result.season.name}` : `Born in ${result.season.name}`}</div><div className="text-[11px] text-[#71717A]">{language === 'ar' ? 'فصل الميلاد' : 'Season'}</div></div>
+                  <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0"><div className="text-lg">👥</div><div className="text-xs font-black text-[#0A0A0B] truncate">{result.generation}</div><div className="text-[11px] text-[#71717A] truncate">{language === 'ar' ? 'جيلك' : 'Generation'}</div></div>
                 </div>
                 <div className="mt-3 text-[11px] font-bold text-[#71717A] bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl px-3 py-2 break-words">📅 {result.birthStrAr} — {result.hijriBirth.formatted}</div>
                 <div className="mt-3 bg-[#FFFCF4] border border-[#E8E0C8] rounded-xl px-3 py-2.5 break-words">
-                  <div className="text-[11px] font-black text-[#B08D3C] mb-1">ماذا صنع جيلك؟</div>
+                  <div className="text-[11px] font-black text-[#B08D3C] mb-1">{language === 'ar' ? 'ماذا صنع جيلك؟' : 'What did your generation create?'}</div>
                   <div className="text-xs font-bold text-[#52525B] leading-relaxed">{result.generationDescription}</div>
                 </div>
               </div>
@@ -1129,30 +1469,60 @@ export default function App(){
             <div className="lg:col-span-5 bg-[#0A0A0B] rounded-[20px] p-[1.5px] shadow-lg min-w-0">
               <div className="bg-white rounded-[18px] p-5 h-full min-w-0">
                 <div className="flex items-center justify-between mb-3 gap-2">
-                  <div className="inline-flex items-center gap-2 bg-[#0A0A0B] text-white text-xs font-black px-3 py-1.5 rounded-full shrink-0"><Gift className="w-3.5 h-3.5 text-[#7C3AED]"/> عيد ميلادك القادم</div>
+                  <div className="inline-flex items-center gap-2 bg-[#0A0A0B] text-white text-xs font-black px-3 py-1.5 rounded-full shrink-0"><Gift className="w-3.5 h-3.5 text-[#7C3AED]"/> {language === 'ar' ? 'عيد ميلادك القادم' : 'Next birthday'}</div>
                   <span className="text-[11px] font-bold text-[#71717A] bg-[#F4F4F5] border border-[#E4E4E7] px-2.5 py-1 rounded-full shrink-0 truncate">{result.nextGreg.weekday}</span>
                 </div>
                 <div className="text-sm font-black text-[#0A0A0B] break-words">{result.nextGreg.dateStr}</div>
-                <div className="text-xs font-bold text-[#71717A] mb-3 break-words">هجري: {result.nextHijri.hijriStr} — بعد {formatNumber(result.nextHijri.days)} يوم</div>
+                <div className="text-xs font-bold text-[#71717A] mb-3 break-words">{language === 'ar' ? `هجري: ${result.nextHijri.hijriStr} — بعد ${formatNumber(result.nextHijri.days)} يوم` : `Hijri: ${result.nextHijri.hijriStr} — ${formatNumber(result.nextHijri.days)} days left`}</div>
 
                 <Countdown target={result.nextGreg.date}/>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <div className="bg-[#FAFAF9] border border-[#E8E6E1] rounded-xl p-3 text-center min-w-0">
-                    <div className="text-[11px] font-bold text-[#71717A]">الميلادي القادم</div>
-                    <div className="text-sm font-black text-[#0A0A0B] tabular-nums" dir="ltr">{formatNumber(result.nextGreg.days)} يوم</div>
+                    <div className="text-[11px] font-bold text-[#71717A]">{language === 'ar' ? 'الميلادي القادم' : 'Next Gregorian'}</div>
+                    <div className="text-sm font-black text-[#0A0A0B] tabular-nums" dir="ltr">{formatNumber(result.nextGreg.days)} {language === 'ar' ? 'يوم' : 'days'}</div>
                   </div>
                   <div className="bg-[#0A0A0B] rounded-xl p-3 text-center text-white min-w-0">
-                    <div className="text-[11px] font-bold text-white/60">الهجري القادم</div>
-                    <div className="text-sm font-black tabular-nums" dir="ltr">{formatNumber(result.nextHijri.days)} يوم</div>
+                    <div className="text-[11px] font-bold text-white/60">{language === 'ar' ? 'الهجري القادم' : 'Next Hijri'}</div>
+                    <div className="text-sm font-black tabular-nums" dir="ltr">{formatNumber(result.nextHijri.days)} {language === 'ar' ? 'يوم' : 'days'}</div>
                   </div>
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <button onClick={copyResult} className="flex-1 h-9 rounded-full bg-[#0A0A0B] text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-95"><Copy className="w-3.5 h-3.5"/> نسخ</button>
+                  <button onClick={copyResult} className="flex-1 h-9 rounded-full bg-[#0A0A0B] text-white text-xs font-black flex items-center justify-center gap-1.5 active:scale-95"><Copy className="w-3.5 h-3.5"/> {language === 'ar' ? 'نسخ' : 'Copy'}</button>
                   <button onClick={share} className="w-9 h-9 rounded-full bg-[#F4F4F5] border border-[#E4E4E7] flex items-center justify-center hover:bg-white active:scale-95"><Share2 className="w-4 h-4 text-[#0A0A0B]"/></button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 text-[#7C3AED] font-black text-xs tracking-widest"><History className="w-4 h-4"/> {t.eventsTitle} <span className="text-[10px] text-[#71717A] tracking-normal font-bold">Wikipedia العربية</span></div>
+                <button onClick={saveBirthDateLocally} className="text-[10px] font-black bg-[#F4F4F5] border border-[#E4E4E7] rounded-full px-3 py-1.5 text-[#0A0A0B]">{language === 'ar' ? 'حفظ التاريخ' : 'Save date'}</button>
+              </div>
+              {wikiLoading ? (
+                <p className="text-[13px] text-[#52525B]">{language === 'ar' ? 'جاري جلب الأشخاص من ويكيبيديا...' : 'Loading people from Wikipedia...'}</p>
+              ) : wikiPeople.length > 0 ? (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {wikiPeople.map(person => (
+                    <a key={person.pageid} href={person.content_urls?.desktop?.page || `https://ar.wikipedia.org/wiki/${encodeURIComponent(person.title)}`} target="_blank" rel="noreferrer" className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-3 flex gap-3 hover:border-[#7C3AED] transition">
+                      {person.thumbnail?.source ? <img src={person.thumbnail.source} alt="" loading="lazy" className="w-16 h-16 rounded-xl object-cover shrink-0" /> : <div className="w-16 h-16 rounded-xl bg-[#0A0A0B] text-white flex items-center justify-center shrink-0"><Users className="w-6 h-6" /></div>}
+                      <div className="min-w-0">
+                        <div className="text-sm font-black text-[#0A0A0B]">{person.title}</div>
+                        <div className="text-[11px] font-bold text-[#7C3AED] mt-1">{person.description || (language === 'ar' ? 'شخص وُلد في هذا اليوم' : 'Born on this day')}</div>
+                        <p className="text-[12px] leading-relaxed text-[#52525B] mt-1 line-clamp-3">{person.extract || (language === 'ar' ? 'نبذة غير متاحة في ويكيبيديا.' : 'No summary available on Wikipedia.')}</p>
+                        <div className="text-[10px] font-black text-[#B08D3C] mt-2">{language === 'ar' ? 'نبذة وإنجازات • فتح ويكيبيديا' : 'Bio & achievements • Open Wikipedia'}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : wikiError ? (
+                <p className="text-[13px] text-[#52525B]">{language === 'ar' ? 'تعذر جلب بيانات ويكيبيديا حالياً. تحقق من اتصال الإنترنت وحاول مرة أخرى.' : 'Wikipedia data is unavailable right now. Check your connection and try again.'}</p>
+              ) : (
+                <p className="text-[13px] text-[#52525B]">{t.noEvent}</p>
+              )}
             </div>
           </div>
 
@@ -1233,15 +1603,50 @@ export default function App(){
               <span className="flex items-center gap-1.5 bg-[#FAFAF9] border border-[#E8E6E1] rounded-full px-2 py-1.5 justify-center min-w-0"><GraduationCap className="w-3.5 h-3.5 shrink-0"/> دراستك</span>
               <span className="flex items-center gap-1.5 bg-[#FAFAF9] border border-[#E8E6E1] rounded-full px-2 py-1.5 justify-center min-w-0"><Briefcase className="w-3.5 h-3.5 shrink-0"/> مسيرتك</span>
             </div>
+            <div className="mt-4 rounded-2xl border border-[#E8E6E1] bg-[#FFFCF4] p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 text-[#B08D3C] font-black text-xs tracking-widest"><Bell className="w-4 h-4"/> {t.reminderTitle}</div>
+                <span className="text-[10px] font-black bg-white border border-[#E8E6E1] rounded-full px-2 py-1 text-[#71717A]">{savedBirthDate}</span>
+              </div>
+              {reminderVisible || reminderMilestones.length > 0 ? (
+                <div className="space-y-2">
+                  {reminderMilestones.length > 0 ? reminderMilestones.map(item => (
+                    <div key={item.label} className="rounded-xl border border-[#E8E6E1] bg-white p-3 text-[12px] font-bold text-[#0A0A0B]">
+                      {language === 'ar' ? `قريباً: ${item.title} خلال ${item.daysUntil} يوم` : `Soon: ${item.title} in ${item.daysUntil} days`}
+                    </div>
+                  )) : <div className="rounded-xl border border-[#E8E6E1] bg-white p-3 text-[12px] font-bold text-[#0A0A0B]">{t.reminderText}</div>}
+                </div>
+              ) : <div className="rounded-xl border border-dashed border-[#D4D4D8] bg-white p-3 text-[12px] font-bold text-[#52525B]">{t.reminderText}</div>}
+              <button onClick={saveBirthDateLocally} className="mt-3 rounded-full bg-[#0A0A0B] text-white text-[11px] font-black px-4 py-2.5">{language === 'ar' ? 'حفظ التذكير محلياً' : 'Save reminder locally'}</button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 justify-center">
             <button onClick={()=>window.print()} className="bg-white border border-[#E4E4E7] hover:bg-[#FAFAF9] text-[#0A0A0B] rounded-full px-5 py-2.5 text-xs font-black flex items-center gap-2 shadow-sm active:scale-95">
-              <Globe className="w-4 h-4"/> طباعة النتيجة
+              <Globe className="w-4 h-4"/> {language === 'ar' ? 'طباعة النتيجة' : 'Print result'}
             </button>
-            <button onClick={copyResult} className="bg-[#0A0A0B] hover:bg-black text-white rounded-full px-5 py-2.5 text-xs font-black flex items-center gap-2 active:scale-95">
-              {copied? <Check className="w-4 h-4"/> : <Copy className="w-4 h-4"/>} نسخ كل التفاصيل
+            <button onClick={downloadSelectedCards} className="bg-[#0A0A0B] hover:bg-black text-white rounded-full px-5 py-2.5 text-xs font-black flex items-center gap-2 active:scale-95">
+              <Download className="w-4 h-4"/> {t.downloadCard}
             </button>
+            <button onClick={copyResult} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-full px-5 py-2.5 text-xs font-black flex items-center gap-2 active:scale-95">
+              {copied? <Check className="w-4 h-4"/> : <Copy className="w-4 h-4"/>} {language === 'ar' ? 'نسخ كل التفاصيل' : 'Copy all details'}
+            </button>
+          </div>
+          <div className="mt-3 mx-auto max-w-[760px] rounded-2xl border border-[#E8E6E1] bg-white p-3 shadow-sm">
+            <div className="flex items-center gap-2 text-[11px] font-black text-[#B08D3C] mb-2"><Diamond className="w-3.5 h-3.5"/> {language === 'ar' ? 'اختر بطاقات التحميل' : 'Choose cards to download'}</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                ['summary', language === 'ar' ? 'ملخص العمر' : 'Age summary'],
+                ['calendars', language === 'ar' ? 'التقويمان' : 'Calendars'],
+                ['milestones', language === 'ar' ? 'المحطات' : 'Milestones'],
+                ['full', language === 'ar' ? 'كل التفاصيل' : 'Full details']
+              ].map(([type, label]) => (
+                <label key={type} className="flex items-center gap-2 rounded-xl bg-[#FAFAF9] border border-[#E8E6E1] px-3 py-2 text-[11px] font-bold cursor-pointer">
+                  <input type="checkbox" checked={selectedCardTypes.includes(type)} onChange={() => setSelectedCardTypes(current => current.includes(type) ? current.filter(item => item !== type) : [...current, type])} className="accent-[#7C3AED]" />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
 
         </motion.div>
