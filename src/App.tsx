@@ -81,6 +81,7 @@ type BirthdayPerson = {
 // ---------- Constants ----------
 const hijriMonthNames = ["محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"]
 const gregorianMonthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"]
+const preferredBirthdayNames = ["بيليه", "ألبرت أينشتاين", "محمد علي", "ليونيل ميسي", "كريستيانو رونالدو", "مايكل جاكسون", "ويليام شكسبير"]
 const daysArFull = ["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"]
 const daysEnFull = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
@@ -130,7 +131,7 @@ const notableBirthdays: Record<string, BirthdayPerson[]> = {
   '12-25': [{ name: 'همفري بوغارت', description: 'ممثل', details: 'من أبرز نجوم العصر الذهبي للسينما الأمريكية.', day: 25, month: 12, birthYear: 1899 }]
 }
 
-/*
+const legacyBirthdayData = {
   '01': [
     { name: 'محمود درويش', description: 'شاعر عربي', details: 'أحد أشهر الشعراء العرب في القرن العشرين.' },
     { name: 'تشارلز ديفرو', description: 'كاتب ومؤلف', details: 'مؤلف مشهور في الأدب الإنجليزي.' },
@@ -191,7 +192,7 @@ const notableBirthdays: Record<string, BirthdayPerson[]> = {
     { name: 'جودت سليمان', description: 'فنان', details: 'من أبرز الفنانين في المنطقة.' },
     { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي', details: 'من قادة المملكة العربية السعودية.' }
   ]
-*/
+}
 const uiText = {
   ar: {
     title: 'عُـمـري',
@@ -526,6 +527,7 @@ export default function App(){
   })
   const [reminderVisible, setReminderVisible] = useState(false)
   const [birthdayPeople, setBirthdayPeople] = useState<BirthdayPerson[]>([])
+  const [birthdayLoading, setBirthdayLoading] = useState(false)
   const [selectedCardTypes, setSelectedCardTypes] = useState<string[]>(['summary', 'calendars', 'milestones', 'full'])
   const [userRating, setUserRating] = useState<number>(() => {
     try {
@@ -983,11 +985,46 @@ export default function App(){
 
   useEffect(() => {
     if (!birthStr) return
-    const month = birthStr.slice(5, 7)
-    const day = birthStr.slice(8, 10)
-    const key = `${month}-${day}`
-    const people = notableBirthdays[key] ?? []
-    setBirthdayPeople(people.slice(0, 6))
+    const [, month, day] = birthStr.split('-')
+    if (!month || !day) return
+
+    const controller = new AbortController()
+    const loadBirthdays = async () => {
+      setBirthdayLoading(true)
+      try {
+        const response = await fetch(`https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${month}/${day}`, { signal: controller.signal })
+        if (!response.ok) throw new Error(`Wikipedia request failed: ${response.status}`)
+        const data = await response.json() as { births?: { text?: string; year?: number; pages?: { description?: string; extract?: string }[] }[] }
+        const births = [...(data.births ?? [])].sort((first, second) => {
+          const firstName = first.text ?? ''
+          const secondName = second.text ?? ''
+          const firstPriority = preferredBirthdayNames.findIndex(name => firstName.includes(name))
+          const secondPriority = preferredBirthdayNames.findIndex(name => secondName.includes(name))
+          if (firstPriority !== -1 || secondPriority !== -1) return (firstPriority === -1 ? 999 : firstPriority) - (secondPriority === -1 ? 999 : secondPriority)
+          return 0
+        })
+        const people = births.slice(0, 6).flatMap(person => {
+          if (!person.text || typeof person.year !== 'number') return []
+          const page = person.pages?.[0]
+          return [{
+            name: person.text,
+            description: page?.description || 'شخصية بارزة من ويكيبيديا العربية',
+            details: page?.extract?.split('\n')[0] || `وُلد في ${day} ${gregorianMonthNames[Number(month) - 1]} سنة ${person.year}.`,
+            day: Number(day),
+            month: Number(month),
+            birthYear: person.year
+          }]
+        })
+        setBirthdayPeople(people)
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') setBirthdayPeople([])
+      } finally {
+        if (!controller.signal.aborted) setBirthdayLoading(false)
+      }
+    }
+
+    loadBirthdays()
+    return () => controller.abort()
   }, [birthStr])
 
   const reminderMilestones = useMemo(() => {
@@ -1584,7 +1621,9 @@ export default function App(){
                 <div className="flex items-center gap-2 text-[#7C3AED] font-black text-xs tracking-widest"><History className="w-4 h-4"/> {t.eventsTitle}</div>
                 <button onClick={saveBirthDateLocally} className="text-[10px] font-black bg-[#F4F4F5] border border-[#E4E4E7] rounded-full px-3 py-1.5 text-[#0A0A0B]">{language === 'ar' ? 'حفظ التاريخ' : 'Save date'}</button>
               </div>
-              {birthdayPeople.length > 0 ? (
+              {birthdayLoading ? (
+                <div className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-4 text-sm font-black text-[#7C3AED]">جاري البحث في ويكيبيديا العربية عن أشهر من وُلدوا في هذا التاريخ...</div>
+              ) : birthdayPeople.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-3">
                   {birthdayPeople.map(person => (
                     <div key={`${person.name}-${person.description}`} className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-3 flex gap-3">
@@ -1599,7 +1638,7 @@ export default function App(){
                   ))}
                 </div>
               ) : (
-                <p className="text-[13px] text-[#52525B]">{t.noEvent}</p>
+                <p className="text-[13px] text-[#52525B]">لم تُرجع ويكيبيديا العربية نتيجة لهذا التاريخ حتى الآن. جرّب يوماً آخر.</p>
               )}
             </div>
           </div>
