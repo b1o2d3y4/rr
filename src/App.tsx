@@ -4,7 +4,7 @@ import {
   Calendar, Clock, Moon, Sparkles, History,
   Calculator, Share2, Copy, Check, Star,
   Heart, Timer, Gift, ArrowLeft,
-  Globe, Hourglass, Sun,
+  Globe, Hourglass, Sun, Mail,
   Crown, Baby, GraduationCap, Briefcase,
   Atom, ChevronDown, Zap, Users, Award,
   Infinity as InfinityIcon, Link2, Gem, Diamond, AlertCircle,
@@ -994,8 +994,7 @@ export default function App(){
         const response = await fetch(`https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${month}/${day}`, { signal: controller.signal })
         if (!response.ok) throw new Error(`Wikipedia request failed: ${response.status}`)
         const data = await response.json() as { births?: { text?: string; year?: number; pages?: { description?: string; extract?: string }[] }[] }
-        const topPerson = data.births?.[0]
-        const people = topPerson ? [topPerson].flatMap(person => {
+        const people = (data.births ?? []).slice(0, 3).flatMap(person => {
           if (!person.text || typeof person.year !== 'number') return []
           const page = person.pages?.[0]
           return [{
@@ -1006,7 +1005,7 @@ export default function App(){
             month: Number(month),
             birthYear: person.year
           }]
-        }) : []
+        })
         setBirthdayPeople(people)
       } catch (error) {
         if ((error as Error).name !== 'AbortError') setBirthdayPeople([])
@@ -1121,6 +1120,19 @@ export default function App(){
           </div>
         </div>
       </header>
+
+      <section className="max-w-[1200px] mx-auto px-4 md:px-6 pt-4">
+        <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-4 md:px-5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#7C3AED] flex items-center justify-center shrink-0"><Mail className="w-5 h-5 text-white"/></div>
+            <div className="min-w-0">
+              <h2 className="text-sm md:text-base font-black text-[#0A0A0B]">{language === 'ar' ? 'التواصل مع المطور' : 'Contact the developer'}</h2>
+              <p className="text-xs font-bold text-[#71717A] mt-1">{language === 'ar' ? 'يسعدنا تواصلكم معنا عند وجود مشكلة أو للاستفسار عن الإعلانات.' : 'We would be happy to hear from you about issues or advertising.'}</p>
+            </div>
+          </div>
+          <a href="mailto:abdelrhman.hr8@gmail.com" className="text-xs md:text-sm font-black text-[#7C3AED] hover:text-[#5B21B6] break-all">abdelrhman.hr8@gmail.com</a>
+        </div>
+      </section>
 
       {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-4 md:px-6 pt-6 md:pt-8">
@@ -1362,7 +1374,12 @@ export default function App(){
 
                 <div className="grid grid-cols-2 gap-2 mt-3">
                   <div className="bg-white/10 border border-white/10 rounded-xl p-2.5 text-center backdrop-blur min-w-0"><div className="text-[11px] font-bold text-white/60 truncate">ميلادك ميلادي</div><div className="text-xs font-black truncate">{result.birthStrAr}</div></div>
-                  <div className="bg-white text-[#0A0A0B] rounded-xl p-2.5 text-center min-w-0"><div className="text-[11px] font-black truncate">ميلادك هجري</div><div className="text-xs font-black truncate" style={{fontFamily:"'Amiri',serif"}}>{result.hijriBirth.formatted}</div></div>
+                  <div className="bg-white text-[#0A0A0B] rounded-xl p-2.5 flex items-center gap-2 min-w-0">
+                    <div className="text-center min-w-0 flex-1"><div className="text-[11px] font-black truncate">ميلادك هجري</div><div className="text-xs font-black truncate" style={{fontFamily:"'Amiri',serif"}}>{result.hijriBirth.formatted}</div></div>
+                    <button onClick={copyHijriBirth} className="w-8 h-8 rounded-full bg-[#0A0A0B] text-white flex items-center justify-center shrink-0 active:scale-95" aria-label="نسخ تاريخ الميلاد الهجري" title="نسخ تاريخ الميلاد الهجري">
+                      {hijriCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </LiquidSurface>
@@ -1611,7 +1628,7 @@ export default function App(){
             <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2 text-[#7C3AED] font-black text-xs tracking-widest"><History className="w-4 h-4"/> {t.eventsTitle}</div>
-                <button onClick={saveBirthDateLocally} className="text-[10px] font-black bg-[#F4F4F5] border border-[#E4E4E7] rounded-full px-3 py-1.5 text-[#0A0A0B]">{language === 'ar' ? 'حفظ التاريخ' : 'Save date'}</button>
+                <button onClick={share} className="text-[10px] font-black bg-[#0A0A0B] text-white rounded-full px-3 py-1.5 flex items-center gap-1.5 active:scale-95"><Share2 className="w-3 h-3"/>{language === 'ar' ? 'مشاركة' : 'Share'}</button>
               </div>
               {birthdayLoading ? (
                 <div className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-4 text-sm font-black text-[#7C3AED]">جاري البحث في ويكيبيديا العربية عن أشهر من وُلدوا في هذا التاريخ...</div>
