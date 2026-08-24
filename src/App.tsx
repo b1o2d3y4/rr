@@ -194,7 +194,7 @@ const legacyBirthdayData = {
 }
 const uiText = {
   ar: {
-    title: 'عُـمـري',
+    title: 'عـمـري',
     subtitle: 'HIJRI & GREGORIAN',
     share: 'مشاركة',
     downloadCard: 'تحميل البطاقة',
@@ -1127,7 +1127,7 @@ export default function App(){
             <div className="w-10 h-10 rounded-xl bg-[#7C3AED] flex items-center justify-center shrink-0"><Mail className="w-5 h-5 text-white"/></div>
             <div className="min-w-0">
               <h2 className="text-sm md:text-base font-black text-[#0A0A0B]">{language === 'ar' ? 'التواصل مع المطور' : 'Contact the developer'}</h2>
-              <p className="text-xs font-bold text-[#71717A] mt-1">{language === 'ar' ? 'يسعدنا تواصلكم معنا عند وجود مشكلة أو للاستفسار عن الإعلانات.' : 'We would be happy to hear from you about issues or advertising.'}</p>
+              <p className="text-xs font-bold text-[#71717A] mt-1">{language === 'ar' ? 'يسعدنا تواصلكم معنا' : 'We are happy to hear from you.'}</p>
             </div>
           </div>
           <a href="mailto:abdelrhman.hr8@gmail.com" className="text-xs md:text-sm font-black text-[#7C3AED] hover:text-[#5B21B6] break-all">abdelrhman.hr8@gmail.com</a>
