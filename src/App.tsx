@@ -81,7 +81,6 @@ type BirthdayPerson = {
 // ---------- Constants ----------
 const hijriMonthNames = ["محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة","رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"]
 const gregorianMonthNames = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"]
-const preferredBirthdayNames = ["بيليه", "ألبرت أينشتاين", "محمد علي", "ليونيل ميسي", "كريستيانو رونالدو", "مايكل جاكسون", "ويليام شكسبير"]
 const daysArFull = ["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"]
 const daysEnFull = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
@@ -503,7 +502,7 @@ function LiquidSurface({children, className=""}:{children:React.ReactNode; class
 
 // ---------- Main ----------
 export default function App(){
-  const [birthStr, setBirthStr] = useState("1998-06-15")
+  const [birthStr, setBirthStr] = useState("1998-10-23")
   const [birthTime, setBirthTime] = useState("00:00")
   const [result, setResult] = useState<Result|null>(null)
   const [error, setError] = useState("")
@@ -520,9 +519,9 @@ export default function App(){
   })
   const [savedBirthDate] = useState<string>(() => {
     try {
-      return localStorage.getItem('saved-birth-date') || '1998-06-15'
+      return localStorage.getItem('saved-birth-date') || '1998-10-23'
     } catch {
-      return '1998-06-15'
+      return '1998-10-23'
     }
   })
   const [reminderVisible, setReminderVisible] = useState(false)
@@ -977,7 +976,7 @@ export default function App(){
   const quickDates = [
     {label:"1975", v:"1975-03-20"},
     {label:"1995", v:"1995-04-12"},
-    {label:"1998", v:"1998-06-15"},
+    {label:"1998", v:"1998-10-23"},
     {label:"2002", v:"2002-11-03"},
   ]
 
@@ -995,15 +994,8 @@ export default function App(){
         const response = await fetch(`https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${month}/${day}`, { signal: controller.signal })
         if (!response.ok) throw new Error(`Wikipedia request failed: ${response.status}`)
         const data = await response.json() as { births?: { text?: string; year?: number; pages?: { description?: string; extract?: string }[] }[] }
-        const births = [...(data.births ?? [])].sort((first, second) => {
-          const firstName = first.text ?? ''
-          const secondName = second.text ?? ''
-          const firstPriority = preferredBirthdayNames.findIndex(name => firstName.includes(name))
-          const secondPriority = preferredBirthdayNames.findIndex(name => secondName.includes(name))
-          if (firstPriority !== -1 || secondPriority !== -1) return (firstPriority === -1 ? 999 : firstPriority) - (secondPriority === -1 ? 999 : secondPriority)
-          return 0
-        })
-        const people = births.slice(0, 6).flatMap(person => {
+        const topPerson = data.births?.[0]
+        const people = topPerson ? [topPerson].flatMap(person => {
           if (!person.text || typeof person.year !== 'number') return []
           const page = person.pages?.[0]
           return [{
@@ -1014,7 +1006,7 @@ export default function App(){
             month: Number(month),
             birthYear: person.year
           }]
-        })
+        }) : []
         setBirthdayPeople(people)
       } catch (error) {
         if ((error as Error).name !== 'AbortError') setBirthdayPeople([])
