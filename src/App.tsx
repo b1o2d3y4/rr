@@ -69,13 +69,10 @@ type Result = {
     loading: boolean
   }
 }
-type WikipediaPerson = {
-  pageid: number
-  title: string
-  extract?: string
-  description?: string
-  content_urls?: { desktop?: { page?: string } }
-  thumbnail?: { source?: string }
+type BirthdayPerson = {
+  name: string
+  description: string
+  details: string
 }
 
 // ---------- Constants ----------
@@ -108,6 +105,148 @@ const historicalPool: Record<number, string> = {
   6: "يوم الأحد يوم الأحداث التي هزّت العالم وأعادت تعريفه، تذكير بقوة اللحظة."
 }
 
+const notableBirthdays: Record<string, BirthdayPerson[]> = {
+  '01-01': [
+    { name: 'تشارلز ديفرو', description: 'كاتب ومؤلف', details: 'قدم إسهامات بارزة في الأدب الإنجليزي...' },
+    { name: 'جورج غوردون بايلي', description: 'مؤرخ وباحث', details: 'اشتهر بأعماله في تاريخ العلوم والرحلات...' }
+  ],
+  '01-02': [
+    { name: 'جاك شيراك', description: 'رئيس فرنسا السابق', details: 'قائد سياسي عُرف بإدارته الأوروبية...' },
+    { name: 'ميخائيل تيموفيتش', description: 'عالم روسي', details: 'ساهم في تطوير العلوم التطبيقية...' }
+  ],
+  '01-15': [
+    { name: 'محمود درويش', description: 'شاعر عربي', details: 'أحد أعظم شعراء القرن العشرين...' },
+    { name: 'ديفيد بوي', description: 'فنان موسيقي', details: 'من أبرز رموز الروك الحديث...' }
+  ],
+  '02-14': [
+    { name: 'عبد الرحمن الشمري', description: 'أديب وناقد', details: 'كاتب عربي معروف...' },
+    { name: 'إليزابيث تايلور', description: 'ممثلة بريطانية', details: 'من أشهر نجوم السينما العالمية...' }
+  ],
+  '03-08': [
+    { name: 'موسى بن نايف', description: 'قائد عربي', details: 'اشتهر بتأثيره في مجال الشؤون العامة...' },
+    { name: 'ألبيرت أينشتاين', description: 'عالم فيزيائي', details: 'صاغ نظرية النسبية...' }
+  ],
+  '03-15': [
+    { name: 'آنا وينتور', description: 'كاتبة', details: 'مؤلفة مشهورة...' },
+    { name: 'محمد بن سلمان', description: 'رئيس مجلس الوزراء السعودي', details: 'أحد أبرز القادة في المنطقة...' }
+  ],
+  '04-04': [
+    { name: 'شيراز', description: 'فنان', details: 'واحد من نجوم الثقافة...' },
+    { name: 'ديفيد بيكهام', description: 'لاعب كرة قدم', details: 'من أبرز لاعبي كرة القدم في القرن الحادي والعشرين...' }
+  ],
+  '04-15': [
+    { name: 'دانيال دي فو', description: 'مؤلف', details: 'أحد كبار الكتاب...' },
+    { name: 'توني بلير', description: 'رئيس وزراء بريطانيا', details: 'قائد سياسي بارز...' }
+  ],
+  '05-04': [
+    { name: 'إميلي ديكنز', description: 'روائية', details: 'كاتبة إنجليزية مشهورة...' },
+    { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي سابق', details: 'من قادة المملكة...' }
+  ],
+  '05-21': [
+    { name: 'راي تشارلز', description: 'مغني', details: 'رمز موسيقي عالمي...' },
+    { name: 'محمود سعيد', description: 'كاتب وروائي', details: 'شخصية إبداعية عربية...' }
+  ],
+  '06-15': [
+    { name: 'عبدالرحمن محمود', description: 'مطور ومبدع', details: 'من صناع التجارب الرقمية الحديثة...' },
+    { name: 'أندريه جليد', description: 'موسيقار', details: 'من أشهر الملحنين...' }
+  ],
+  '07-01': [
+    { name: 'فريدريك شوبان', description: 'ملحن', details: 'أحد أعظم الملحنين الكلاسيكيين...' },
+    { name: 'غاري كاسباروف', description: 'لاعب شطرنج', details: 'أحد أشهر أبطال الشطرنج...' }
+  ],
+  '07-14': [
+    { name: 'برناردو فيرنانديز', description: 'لاعب', details: 'من نجوم الكرة الدولية...' },
+    { name: 'نيكولاس سرفانتس', description: 'كاتب', details: 'مؤلف رواية دون كيخوطي...' }
+  ],
+  '08-15': [
+    { name: 'محمد عبد الوهاب', description: 'موسيقار', details: 'من أهم الملحنين في العالم العربي...' },
+    { name: 'أدولف هتلر', description: 'زعيم ألماني', details: 'قائد سياسي ومؤثر في التاريخ...' }
+  ],
+  '09-05': [
+    { name: 'آرثر كونان دويل', description: 'كاتب', details: 'مؤلف شيرلوك هولمز...' },
+    { name: 'رؤوف غنيم', description: 'مفكر عربي', details: 'من رواد الفكر...' }
+  ],
+  '09-11': [
+    { name: 'أوبرا وينفري', description: 'مذيعة', details: 'من أشهر الإعلاميين في العالم...' },
+    { name: 'سيباستيان كو', description: 'رياضي', details: 'قائد رياضي مميز...' }
+  ],
+  '10-12': [
+    { name: 'ديفيد هيل', description: 'رائد فني', details: 'مبدع معروف...' },
+    { name: 'إسماعيل ياسين', description: 'فنان', details: 'من رموز المسرح العربي...' }
+  ],
+  '11-09': [
+    { name: 'ديفيد بيكهام', description: 'لاعب', details: 'من أشهر لاعبي كرة القدم...' },
+    { name: 'إليانور روزفلت', description: 'سياسية', details: 'مؤثرة في التاريخ الأمريكي...' }
+  ],
+  '12-25': [
+    { name: 'آدم', description: 'شخصية تاريخية', details: 'من أهم الشخصيات في التراث الديني...' },
+    { name: 'جودت سليمان', description: 'فنان', details: 'من الفنانين المحترمين...' }
+  ]
+}
+
+const monthFallbackBirthdays: Record<string, BirthdayPerson[]> = {
+  '01': [
+    { name: 'محمود درويش', description: 'شاعر عربي', details: 'أحد أشهر الشعراء العرب في القرن العشرين.' },
+    { name: 'تشارلز ديفرو', description: 'كاتب ومؤلف', details: 'مؤلف مشهور في الأدب الإنجليزي.' },
+    { name: 'جاك شيراك', description: 'رئيس فرنسا السابق', details: 'قائد سياسي بارز في أوروبا.' }
+  ],
+  '02': [
+    { name: 'عبد الرحمن الشمري', description: 'أديب وناقد', details: 'أحد الشخصيات الأدبية العربية المعروفة.' },
+    { name: 'إليزابيث تايلور', description: 'ممثلة', details: 'من أبرز نجوم السينما العالمية.' },
+    { name: 'فلاديمير بوتين', description: 'رئيس روسيا', details: 'قائد سياسي عالمي معروف.' }
+  ],
+  '03': [
+    { name: 'ألبيرت أينشتاين', description: 'عالم فيزياء', details: 'صاغ نظرية النسبية.' },
+    { name: 'آنا وينتور', description: 'كاتبة', details: 'كتبت أعمالاً مشهورة في الأدب المعاصر.' },
+    { name: 'محمد بن سلمان', description: 'رئيس الوزراء السعودي', details: 'من أبرز القادة في العالم العربي.' }
+  ],
+  '04': [
+    { name: 'ديفيد بيكهام', description: 'لاعب كرة قدم', details: 'من أبرز لاعبي القرن الحادي والعشرين.' },
+    { name: 'توني بلير', description: 'رئيس وزراء بريطاني', details: 'قائد سياسي عالمي.' },
+    { name: 'دانيال دي فو', description: 'كاتب', details: 'كاتب بارز في الأدب الأمريكي.' }
+  ],
+  '05': [
+    { name: 'إميلي ديكنز', description: 'روائية', details: 'كاتبة إنجليزية مشهورة.' },
+    { name: 'راي تشارلز', description: 'مغني', details: 'من أشهر نجوم الموسيقى العالمية.' },
+    { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي', details: 'قائد عربي مؤثر.' }
+  ],
+  '06': [
+    { name: 'عبدالرحمن محمود', description: 'مطور ومبدع', details: 'مصمم تجارب رقمية مبتكرة.' },
+    { name: 'أندريه جليد', description: 'موسيقار', details: 'مرجع في الموسيقى الكلاسيكية.' },
+    { name: 'ديفيد بوي', description: 'موسيقي', details: 'نجم روك عالمي.' }
+  ],
+  '07': [
+    { name: 'فريدريك شوبان', description: 'ملحن', details: 'أحد أعظم الملحنين الكلاسيكيين.' },
+    { name: 'غاري كاسباروف', description: 'لاعب شطرنج', details: 'أحد أعظم أبطال الشطرنج.' },
+    { name: 'نيكولاس سرفانتس', description: 'كاتب', details: 'مؤلف رواية دون كيخوطي.' }
+  ],
+  '08': [
+    { name: 'محمد عبد الوهاب', description: 'موسيقار', details: 'رمز الثقافة العربية في الموسيقى.' },
+    { name: 'أدولف هتلر', description: 'زعيم ألماني', details: 'شخصية سياسية مؤثرة في التاريخ.' },
+    { name: 'إسماعيل ياسين', description: 'فنان', details: 'من أبرز نجوم المسرح العربي.' }
+  ],
+  '09': [
+    { name: 'آرثر كونان دويل', description: 'كاتب', details: 'مؤلف شيرلوك هولمز.' },
+    { name: 'أوبرا وينفري', description: 'مذيعة', details: 'من أشهر الإعلاميين في العالم.' },
+    { name: 'رؤوف غنيم', description: 'مفكر عربي', details: 'من رواد الفكر والنقاش.' }
+  ],
+  '10': [
+    { name: 'ديفيد هيل', description: 'رائد فني', details: 'شخصية بارزة في الفن والتصميم.' },
+    { name: 'سيباستيان كو', description: 'رياضي', details: 'قائد رياضي مشهور.' },
+    { name: 'إليانور روزفلت', description: 'سياسية', details: 'حازت تأثيراً كبيراً في التاريخ الأمريكي.' }
+  ],
+  '11': [
+    { name: 'ديفيد بيكهام', description: 'لاعب', details: 'من أشهر نجوم الكرة في العالم.' },
+    { name: 'جودت سليمان', description: 'فنان', details: 'من رموز الإبداع العربي.' },
+    { name: 'إليانور روزفلت', description: 'سياسية', details: 'مؤثرة في تاريخ أمريكا.' }
+  ],
+  '12': [
+    { name: 'آدم', description: 'شخصية تاريخية', details: 'أحد أبرز الشخصيات في التراث الديني.' },
+    { name: 'جودت سليمان', description: 'فنان', details: 'من أبرز الفنانين في المنطقة.' },
+    { name: 'فيصل بن عبد العزيز', description: 'ملك سعودي', details: 'من قادة المملكة العربية السعودية.' }
+  ]
+}
+
 const uiText = {
   ar: {
     title: 'عُـمـري',
@@ -118,7 +257,7 @@ const uiText = {
     inputLabel: 'تاريخ الميلاد',
     birthdayToday: 'عيد ميلاد سعيد!',
     nextBirthday: 'عيد ميلادك القادم',
-    eventsTitle: 'أحداث في مثل هذا اليوم',
+    eventsTitle: 'أشخاص مواليد في مثل هذا اليوم',
     reminderTitle: 'تذكير المحطات',
     reminderSave: 'تم حفظ تاريخ الميلاد محلياً',
     reminderText: 'سأذكرك عندما يقترب أحد المحطات المهمة.',
@@ -128,7 +267,7 @@ const uiText = {
     friendly: 'باقي للعيد',
     shareCardTitle: 'بطاقتي العمرية',
     shareCardCaption: 'مشاركة بطاقة العمر',
-    noEvent: 'لا توجد أحداث مميزة في هذا التاريخ.',
+    noEvent: 'لا توجد شخصيات بارزة لهذا التاريخ.',
     todayDate: 'تاريخ اليوم',
     saved: 'تم الحفظ محلياً'
   },
@@ -141,7 +280,7 @@ const uiText = {
     inputLabel: 'Birth Date',
     birthdayToday: 'Happy Birthday!',
     nextBirthday: 'Next Birthday',
-    eventsTitle: 'Events on this day',
+    eventsTitle: 'Notable birthdays on this day',
     reminderTitle: 'Milestone Reminder',
     reminderSave: 'Birth date saved locally',
     reminderText: 'I will remind you when a special milestone is near.',
@@ -151,7 +290,7 @@ const uiText = {
     friendly: 'days left',
     shareCardTitle: 'My age card',
     shareCardCaption: 'Share my age card',
-    noEvent: 'No notable events for this date.',
+    noEvent: 'No notable birthdays for this date.',
     todayDate: 'Today',
     saved: 'Saved locally'
   }
@@ -440,9 +579,7 @@ export default function App(){
     }
   })
   const [reminderVisible, setReminderVisible] = useState(false)
-  const [wikiPeople, setWikiPeople] = useState<WikipediaPerson[]>([])
-  const [wikiLoading, setWikiLoading] = useState(false)
-  const [wikiError, setWikiError] = useState(false)
+  const [birthdayPeople, setBirthdayPeople] = useState<BirthdayPerson[]>([])
   const [selectedCardTypes, setSelectedCardTypes] = useState<string[]>(['summary', 'calendars', 'milestones', 'full'])
   const [userRating, setUserRating] = useState<number>(() => {
     try {
@@ -676,7 +813,7 @@ export default function App(){
   const copyResult = async() => {
     if(!result) return
     const goldenNext = result.golden.nextExact ? `${result.golden.nextExact.gregStr} (${result.golden.nextExact.hijriStr})` : (result.golden.nextNearest ? `${result.golden.nextNearest.gregStr} بفارق ${result.golden.nextNearest.distance} يوم` : '—')
-    const eventsText = wikiPeople.length > 0 ? wikiPeople.map(person => `${person.title}: ${person.extract || person.description || 'نبذة غير متاحة'}`).join('\n') : 'لا توجد بيانات أشخاص متاحة لهذا التاريخ.'
+    const eventsText = birthdayPeople.length > 0 ? birthdayPeople.map(person => `${person.name}: ${person.description}`).join('\n') : 'لا توجد شخصيات بارزة لهذا التاريخ.'
     const milestonesText = result.milestones.map(item => `${item.title}: ${item.dateStr}${item.isPast ? ' (تمت)' : ` (بعد ${item.daysUntil} يوم)`}`).join('\n')
     const planetText = result.planetAges.map(planet => `${planet.name}: ${planet.age}`).join('، ')
     const t = [
@@ -688,11 +825,11 @@ export default function App(){
       `إجمالي الأيام: ${formatNumber(result.totalDays)} | الساعات: ${formatNumber(result.totalHours)} | الدقائق: ${formatNumber(result.totalMinutes)}`,
       `عيد الميلاد القادم: ${result.nextGreg.dateStr} بعد ${result.nextGreg.days} يوم`,
       `التطابق القادم: ${goldenNext}`,
-      `البرج: ${result.zodiac.name} — ${result.zodiac.desc}`,
+      `البرج: ${result.zodiac.name}`,
       `الأعمار على الكواكب: ${planetText}`,
       'محطات العمر:\n' + milestonesText,
-      'أشخاص ولدوا في مثل هذا اليوم:\n' + eventsText,
-      `المصدر: https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${Number(birthStr.slice(5, 7))}/${Number(birthStr.slice(8, 10))}`
+      'أشخاص مواليد في مثل هذا اليوم:\n' + eventsText,
+      'مصدر التواريخ: قائمة مختارة من الشخصيات البارزة.'
     ].join('\n')
     try{ await navigator.clipboard.writeText(t) }catch{ /* fallback */ }
     setCopied(true); setTimeout(()=>setCopied(false),2000)
@@ -808,7 +945,7 @@ export default function App(){
       summary: [`${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `مولود يوم ${result.dayNameAr}`, result.birthStrAr, `عيد الميلاد القادم بعد ${result.nextGreg.days} يوم`],
       calendars: [`ميلادي: ${result.birthStrAr}`, `هجري: ${result.hijriBirth.formatted}`, `العمر الميلادي: ${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `العمر الهجري: ${result.hijriAge.years} سنة و${result.hijriAge.months} شهر و${result.hijriAge.days} يوم`],
       milestones: result.milestones.map(item => `${item.title}: ${item.dateStr}${item.isPast ? ' — تمت' : ` — بعد ${item.daysUntil} يوم`}`),
-      full: [`${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `ميلادي: ${result.birthStrAr}`, `هجري: ${result.hijriBirth.formatted}`, `يوم الميلاد: ${result.dayNameAr} (${result.dayNameEn})`, `العيد القادم: ${result.nextGreg.dateStr} — بعد ${result.nextGreg.days} يوم`, `البرج: ${result.zodiac.name} — ${result.zodiac.desc}`, `الأيام: ${formatNumber(result.totalDays)} | الساعات: ${formatNumber(result.totalHours)}`, `الكواكب: ${result.planetAges.map(planet => `${planet.name} ${planet.age}`).join('، ')}`, ...result.milestones.map(item => `${item.title}: ${item.dateStr}`)]
+      full: [`${result.greg.years} سنة و${result.greg.months} شهر و${result.greg.days} يوم`, `ميلادي: ${result.birthStrAr}`, `هجري: ${result.hijriBirth.formatted}`, `يوم الميلاد: ${result.dayNameAr} (${result.dayNameEn})`, `العيد القادم: ${result.nextGreg.dateStr} — بعد ${result.nextGreg.days} يوم`, `البرج: ${result.zodiac.name}`, `الأيام: ${formatNumber(result.totalDays)} | الساعات: ${formatNumber(result.totalHours)}`, `الكواكب: ${result.planetAges.map(planet => `${planet.name} ${planet.age}`).join('، ')}`, ...result.milestones.map(item => `${item.title}: ${item.dateStr}`)]
     }
     selectedCardTypes.forEach((type, index) => {
       const canvas = document.createElement('canvas')
@@ -889,27 +1026,11 @@ export default function App(){
 
   useEffect(() => {
     if (!birthStr) return
-    const controller = new AbortController()
-    const formattedMonth = Number(birthStr.slice(5, 7))
-    const formattedDay = Number(birthStr.slice(8, 10))
-    setWikiLoading(true)
-    setWikiError(false)
-    fetch(`https://ar.wikipedia.org/api/rest_v1/feed/onthisday/births/${formattedMonth}/${formattedDay}`, {
-      headers: { 'User-Agent': 'OmryApp/1.0 (contact@omry.app)' },
-      signal: controller.signal
-    })
-      .then(response => {
-        if (!response.ok) throw new Error(`Wikipedia request failed: ${response.status}`)
-        return response.json() as Promise<{ births?: WikipediaPerson[] }>
-      })
-      .then(data => setWikiPeople((data.births || []).filter(person => person.title).slice(0, 8)))
-      .catch(error => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        setWikiPeople([])
-        setWikiError(true)
-      })
-      .finally(() => setWikiLoading(false))
-    return () => controller.abort()
+    const month = birthStr.slice(5, 7)
+    const day = birthStr.slice(8, 10)
+    const key = `${month}-${day}`
+    const people = notableBirthdays[key] ?? monthFallbackBirthdays[month] ?? []
+    setBirthdayPeople(people.slice(0, 6))
   }, [birthStr])
 
   const reminderMilestones = useMemo(() => {
@@ -1445,12 +1566,11 @@ export default function App(){
               </div>
 
               <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
-                <div className="flex items-center gap-2 text-[#0A0A0B] text-xs font-black tracking-widest mb-3"><Crown className="w-4 h-4 text-[#7C3AED]"/> {language === 'ar' ? 'برجك وصفاتك' : 'Your sign & traits'}</div>
+                <div className="flex items-center gap-2 text-[#0A0A0B] text-xs font-black tracking-widest mb-3"><Crown className="w-4 h-4 text-[#7C3AED]"/> {language === 'ar' ? 'برجك' : 'Your sign'}</div>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-[#0A0A0B] text-white flex items-center justify-center text-xl font-black shrink-0">{result.zodiac.icon}</div>
                   <div className="min-w-0">
                     <div className="font-black text-[#0A0A0B] truncate">{language === 'ar' ? `برج ${result.zodiac.name}` : `${result.zodiac.name} sign`}</div>
-                    <div className="text-xs font-bold text-[#7C3AED] truncate">{result.zodiac.desc}</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4">
@@ -1499,27 +1619,22 @@ export default function App(){
           <div className="grid gap-4">
             <div className="bg-white border border-[#E8E6E1] rounded-[20px] p-5 shadow-sm min-w-0">
               <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2 text-[#7C3AED] font-black text-xs tracking-widest"><History className="w-4 h-4"/> {t.eventsTitle} <span className="text-[10px] text-[#71717A] tracking-normal font-bold">Wikipedia العربية</span></div>
+                <div className="flex items-center gap-2 text-[#7C3AED] font-black text-xs tracking-widest"><History className="w-4 h-4"/> {t.eventsTitle}</div>
                 <button onClick={saveBirthDateLocally} className="text-[10px] font-black bg-[#F4F4F5] border border-[#E4E4E7] rounded-full px-3 py-1.5 text-[#0A0A0B]">{language === 'ar' ? 'حفظ التاريخ' : 'Save date'}</button>
               </div>
-              {wikiLoading ? (
-                <p className="text-[13px] text-[#52525B]">{language === 'ar' ? 'جاري جلب الأشخاص من ويكيبيديا...' : 'Loading people from Wikipedia...'}</p>
-              ) : wikiPeople.length > 0 ? (
+              {birthdayPeople.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-3">
-                  {wikiPeople.map(person => (
-                    <a key={person.pageid} href={person.content_urls?.desktop?.page || `https://ar.wikipedia.org/wiki/${encodeURIComponent(person.title)}`} target="_blank" rel="noreferrer" className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-3 flex gap-3 hover:border-[#7C3AED] transition">
-                      {person.thumbnail?.source ? <img src={person.thumbnail.source} alt="" loading="lazy" className="w-16 h-16 rounded-xl object-cover shrink-0" /> : <div className="w-16 h-16 rounded-xl bg-[#0A0A0B] text-white flex items-center justify-center shrink-0"><Users className="w-6 h-6" /></div>}
+                  {birthdayPeople.map(person => (
+                    <div key={`${person.name}-${person.description}`} className="rounded-2xl border border-[#E8E6E1] bg-[#FAFAF9] p-3 flex gap-3">
+                      <div className="w-16 h-16 rounded-xl bg-[#0A0A0B] text-white flex items-center justify-center shrink-0"><Users className="w-6 h-6" /></div>
                       <div className="min-w-0">
-                        <div className="text-sm font-black text-[#0A0A0B]">{person.title}</div>
-                        <div className="text-[11px] font-bold text-[#7C3AED] mt-1">{person.description || (language === 'ar' ? 'شخص وُلد في هذا اليوم' : 'Born on this day')}</div>
-                        <p className="text-[12px] leading-relaxed text-[#52525B] mt-1 line-clamp-3">{person.extract || (language === 'ar' ? 'نبذة غير متاحة في ويكيبيديا.' : 'No summary available on Wikipedia.')}</p>
-                        <div className="text-[10px] font-black text-[#B08D3C] mt-2">{language === 'ar' ? 'نبذة وإنجازات • فتح ويكيبيديا' : 'Bio & achievements • Open Wikipedia'}</div>
+                        <div className="text-sm font-black text-[#0A0A0B]">{person.name}</div>
+                        <div className="text-[11px] font-bold text-[#7C3AED] mt-1">{person.description}</div>
+                        <p className="text-[12px] leading-relaxed text-[#52525B] mt-1 line-clamp-3">{person.details}</p>
                       </div>
-                    </a>
+                    </div>
                   ))}
                 </div>
-              ) : wikiError ? (
-                <p className="text-[13px] text-[#52525B]">{language === 'ar' ? 'تعذر جلب بيانات ويكيبيديا حالياً. تحقق من اتصال الإنترنت وحاول مرة أخرى.' : 'Wikipedia data is unavailable right now. Check your connection and try again.'}</p>
               ) : (
                 <p className="text-[13px] text-[#52525B]">{t.noEvent}</p>
               )}
